@@ -22,7 +22,7 @@ cd $BASE_DIRECTORY
 # Download virtualenv.
 if [ ! -d $VIRTUALENV_PACKAGE ];
 then
-  apt-get install curl
+  sudo apt-get install curl
   curl -O $VIRTUALENV_PATH$VIRTUALENV_PACKAGE.$PACKAGE_EXTENSION
   tar xvfz $VIRTUALENV_PACKAGE.$PACKAGE_EXTENSION
 fi
@@ -36,7 +36,7 @@ source $VIRTUAL_ENVIRONMENT/bin/activate
 # Install TUF, expect.
 # TODO: Conditional install.
 pip install $TUF_TARBALL
-apt-get install expect
+sudo apt-get install expect
 
 
 cd $QUICKSTART_DIRECTORY
