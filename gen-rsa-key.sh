@@ -13,12 +13,12 @@ set password [lindex $argv 2]
 set timeout 2
 
 
-spawn signercli.py --genrsakey $keystore/
-expect ".*Enter the number of bits for the RSA key*:"
+spawn signercli.py --genrsakey $keystore
+expect ".*Enter the number of bits for the RSA key.*:"
 send "$bit_length\r"
 
 
-expect ".*Enter a password to encrypt the generated RSA key*:"
+expect ".*Enter a password to encrypt the generated RSA key.*:"
 send "$password\r"
 expect ".*Confirm*:"
 send "$password\r"

@@ -7,5 +7,5 @@ source environment.sh
 
 # Destroy old directories.
 # TODO: Confirmation!
-rm -rf $BASE_DIRECTORY/$MIRROR_DIRECTORY
+rm -rf $BASE_DIRECTORY/$TUF_MIRROR_DIRECTORY
 rm -rf $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
