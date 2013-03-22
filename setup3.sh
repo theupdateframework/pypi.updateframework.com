@@ -25,7 +25,13 @@ create_key () {
 }
 
 
-# Does rolename ($1) exists in our keystore?
+# Does rolename ($1) exist in our keystore? If so, get its key.
+get_key() {
+  echo $(./list-keys.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY | grep "'$1'" | grep -Po '[\da-f]{64}')
+}
+
+
+# Does rolename ($1) exist in our keystore?
 role_exists () {
   echo $(./list-keys.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY | grep "'$1'" -c)
 }
@@ -34,15 +40,43 @@ role_exists () {
 # Delegate from PARENT_ROLE_NAME ($1), with PARENT_ROLE_PASSWORD ($2),
 # to TARGET_ROLE_NAME ($3).
 delegate_role () {
-  local PARENT_ROLE_NAME=$1
-  local PARENT_ROLE_PASSWORD=$2
-  local TARGET_ROLE_NAME=$3
+  local PARENT_ROLE_NAME
+  local PARENT_ROLE_PASSWORD
+  local TARGET_FILES_DIRECTORY
+  local TARGET_KEY_NAME
+  local TARGET_KEY_PASSWORD
+  local TARGET_ROLE_NAME
 
-  if [ $(role_exists "$PARENT_ROLE_NAME/$TARGET_ROLE_NAME") -eq 0 ];
+  PARENT_ROLE_NAME=$1
+  PARENT_ROLE_PASSWORD=$2
+  TARGET_ROLE_NAME=$3
+  TARGET_KEY_NAME=""
+  TARGET_KEY_PASSWORD="$TARGET_ROLE_NAME"
+  TARGET_FILES_DIRECTORY=$REPOSITORY_DIRECTORY/$PARENT_ROLE_NAME/$TARGET_ROLE_NAME
+
+  # Does this role exist?
+  if [ $(role_exists "$PARENT_ROLE_NAME/$TARGET_ROLE_NAME") -eq 0 ]
   then
-    local TARGET_KEY_PASSWORD="$TARGET_ROLE_NAME"
-    local TARGET_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$TARGET_KEY_PASSWORD")
-    local TARGET_FILES_DIRECTORY=$REPOSITORY_DIRECTORY/$PARENT_ROLE_NAME/$TARGET_ROLE_NAME
+    # Is the parent in targets/packages/.+?
+    if [[ $PARENT_ROLE_NAME =~ targets/packages/.+ ]]
+    then
+      # Is the parent in targets/packages/.+/.+?
+      if [[ $PARENT_ROLE_NAME =~ targets/packages/.+/.+ ]]
+      then
+        # Does targets/simple/$TARGET_ROLE_NAME exist? If so, reuse its key.
+        TARGET_KEY_NAME=$(get_key "targets/simple/$TARGET_ROLE_NAME")
+      else
+        # Does targets/packages/.*/$TARGET_ROLE_NAME exist? If so, reuse its key.
+        TARGET_KEY_NAME=$(get_key "targets/packages/.*/$TARGET_ROLE_NAME")
+      fi
+    fi
+
+    # Do we have a target key yet?
+    if [ -z $TARGET_KEY_NAME ]
+    then
+      # If not, generate a new key.
+      TARGET_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$TARGET_KEY_PASSWORD")
+    fi
 
     mkdir -p "$TARGET_FILES_DIRECTORY"
     ./make-delegation.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY "$TARGET_FILES_DIRECTORY" $PARENT_ROLE_NAME $PARENT_ROLE_PASSWORD "$TARGET_ROLE_NAME" $TARGET_KEY_NAME "$TARGET_KEY_PASSWORD"
@@ -83,9 +117,10 @@ fi
 # TODO: Walk over PyPI directory tree to derive these roles.
 
 
-# Setup targets/simple
+# targets -> targets/simple
 delegate_role targets targets simple
 
+# targets/simple -> targets/simple/$PACKAGE
 # http://forums.fedoraforum.org/archive/index.php/t-166962.html
 list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple | while read PACKAGE;
 do
@@ -94,8 +129,26 @@ do
 done
 
 
-# Setup targets/packages
+# targets -> targets/packages
 delegate_role targets targets packages
+
+# targets/packages -> targets/packages/$PYTHON_VERSION
+list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages | while read PYTHON_VERSION;
+do
+  delegate_role targets/packages packages $PYTHON_VERSION
+
+  # targets/packages/$PYTHON_VERSION -> targets/packages/$PYTHON_VERSION/$FIRST_LETTER
+  list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION | while read FIRST_LETTER;
+  do
+    delegate_role targets/packages/$PYTHON_VERSION $PYTHON_VERSION $FIRST_LETTER
+
+    # targets/packages/$PYTHON_VERSION/$FIRST_LETTER -> targets/packages/$PYTHON_VERSION/$FIRST_LETTER/$PACKAGE
+    list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION/$FIRST_LETTER | while read PACKAGE;
+    do
+      delegate_role targets/packages/$PYTHON_VERSION/$FIRST_LETTER $FIRST_LETTER $PACKAGE
+    done
+  done
+done
 
 
 if [ $? -eq 0 ];
