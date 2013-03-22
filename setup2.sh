@@ -14,9 +14,10 @@ then
   echo "Please run setup1.sh first!"; exit 1;
 else
   source $VIRTUAL_ENVIRONMENT/bin/activate
+  # TODO: Consider https://pypi.python.org/pypi/bandersnatch
   pip install --upgrade pep381client
   mkdir -p $PYPI_MIRROR_DIRECTORY
   cd $PYPI_MIRROR_DIRECTORY
-  # If you run into trouble, goto http://bitbucket.org/loewis/pep381client/
+  # If you run into trouble, goto https://bitbucket.org/loewis/pep381client/
   pep381run .
 fi

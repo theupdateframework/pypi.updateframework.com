@@ -1,4 +1,5 @@
-Automation for creating, updating and destroying a TUF-secured PyPI mirror.
+Automation for creating, updating and destroying [a TUF-secured PyPI
+mirror](https://github.com/dachshund/pip/wiki/PyPI-over-TUF).
 
 ## Scripts
 
