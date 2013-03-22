@@ -15,6 +15,7 @@ KEY_SIZE=2048
 KEYSTORE_DIRECTORY=./keystore
 REPOSITORY_DIRECTORY=./repository
 REPOSITORY_METADATA_DIRECTORY=$REPOSITORY_DIRECTORY/metadata
+REPOSITORY_TARGETS_DIRECTORY=$REPOSITORY_DIRECTORY/targets
 
 
 # Create key with keystore ($1), bit_length ($2), password ($3),
@@ -124,6 +125,9 @@ delegate_role targets targets simple
 # http://forums.fedoraforum.org/archive/index.php/t-166962.html
 list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple | while read PACKAGE
 do
+  # Copy files, for this package, from the PyPI simple index to the TUF targets repository.
+  # TODO: rsync, not just copy!
+  cp -r $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple/$PACKAGE/ $REPOSITORY_TARGETS_DIRECTORY/simple/
   # FIXME: We are burdened to know the password from the previous step.
   delegate_role targets/simple simple "$PACKAGE"
 done
@@ -145,6 +149,9 @@ do
     # targets/packages/$PYTHON_VERSION/$FIRST_LETTER -> targets/packages/$PYTHON_VERSION/$FIRST_LETTER/$PACKAGE
     list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION/$FIRST_LETTER | while read PACKAGE
     do
+      # Copy files, for this package, from the PyPI package index to the TUF targets repository.
+      # TODO: rsync, not just copy!
+      cp -r $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION/$FIRST_LETTER/$PACKAGE/ $REPOSITORY_TARGETS_DIRECTORY/packages/$PYTHON_VERSION/$FIRST_LETTER/
       delegate_role targets/packages/$PYTHON_VERSION/$FIRST_LETTER $FIRST_LETTER $PACKAGE
     done
   done
