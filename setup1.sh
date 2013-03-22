@@ -20,7 +20,7 @@ cd $BASE_DIRECTORY
 
 
 # Download virtualenv.
-if [ ! -d $VIRTUALENV_PACKAGE ];
+if [ ! -d $VIRTUALENV_PACKAGE ]
 then
   sudo apt-get install curl
   curl -O $VIRTUALENV_PATH$VIRTUALENV_PACKAGE.$PACKAGE_EXTENSION
@@ -45,7 +45,7 @@ cd $QUICKSTART_DIRECTORY
 # Create top-level TUF roles.
 # Pass mirror directory to the quickstart script.
 ./quickstart.sh $BASE_DIRECTORY/$TUF_MIRROR_DIRECTORY
-if [ $? -eq 0 ];
+if [ $? -eq 0 ]
 then
   rm quickstart.sh
 else

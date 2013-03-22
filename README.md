@@ -11,6 +11,9 @@ mirror](https://github.com/dachshund/pip/wiki/PyPI-over-TUF).
         - gen-rsa-key.sh: Drive signercli.py --genrsakey.
         - list-keys.sh: Drive signercli.py --listkeys.
         - make-delegation.sh: Drive signercli.py --makedelegation.
+    + setup4.sh: Make a new release and timestamp.
+        - make-release.sh: Drive signercli.py --makerelease.
+        - make-timestamp.sh: Drive signercli.py --maketimestamp.
 - destroy.sh: Destroy pypi.updateframework.com.
 - environment.sh: Shared environmental variables.
 

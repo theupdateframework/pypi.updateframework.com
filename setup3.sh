@@ -92,7 +92,7 @@ list_directories(){
 
 
 # Activate virtual environment.
-if [ ! -d $BASE_DIRECTORY/$VIRTUALENV_PACKAGE ];
+if [ ! -d $BASE_DIRECTORY/$VIRTUALENV_PACKAGE ]
 then
   echo "Please run setup1.sh first!"; exit 1;
 else
@@ -101,7 +101,7 @@ fi
 
 
 # Check for keystore.
-if [ ! -d $BASE_DIRECTORY/$QUICKSTART_DIRECTORY/keystore ];
+if [ ! -d $BASE_DIRECTORY/$QUICKSTART_DIRECTORY/keystore ]
 then
   echo "Please run setup1.sh first!"; exit 1;
 else
@@ -114,7 +114,7 @@ fi
 
 
 # Create keys for delegated target roles, and setup target delegations.
-# TODO: Walk over PyPI directory tree to derive these roles.
+# Walk over PyPI directory tree to derive these roles.
 
 
 # targets -> targets/simple
@@ -122,7 +122,7 @@ delegate_role targets targets simple
 
 # targets/simple -> targets/simple/$PACKAGE
 # http://forums.fedoraforum.org/archive/index.php/t-166962.html
-list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple | while read PACKAGE;
+list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple | while read PACKAGE
 do
   # FIXME: We are burdened to know the password from the previous step.
   delegate_role targets/simple simple "$PACKAGE"
@@ -133,17 +133,17 @@ done
 delegate_role targets targets packages
 
 # targets/packages -> targets/packages/$PYTHON_VERSION
-list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages | while read PYTHON_VERSION;
+list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages | while read PYTHON_VERSION
 do
   delegate_role targets/packages packages $PYTHON_VERSION
 
   # targets/packages/$PYTHON_VERSION -> targets/packages/$PYTHON_VERSION/$FIRST_LETTER
-  list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION | while read FIRST_LETTER;
+  list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION | while read FIRST_LETTER
   do
     delegate_role targets/packages/$PYTHON_VERSION $PYTHON_VERSION $FIRST_LETTER
 
     # targets/packages/$PYTHON_VERSION/$FIRST_LETTER -> targets/packages/$PYTHON_VERSION/$FIRST_LETTER/$PACKAGE
-    list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION/$FIRST_LETTER | while read PACKAGE;
+    list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION/$FIRST_LETTER | while read PACKAGE
     do
       delegate_role targets/packages/$PYTHON_VERSION/$FIRST_LETTER $FIRST_LETTER $PACKAGE
     done
@@ -151,7 +151,7 @@ do
 done
 
 
-if [ $? -eq 0 ];
+if [ $? -eq 0 ]
 then
   rm gen-rsa-key.sh list-keys.sh make-delegation.sh
 else
