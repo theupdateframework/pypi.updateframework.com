@@ -16,4 +16,4 @@ PACKAGE_EXTENSION=tar.gz
 VIRTUAL_ENVIRONMENT=virtual_python
 
 
-TUF_TARBALL=https://github.com/akonst/tuf/tarball/interposition
+TUF_TARBALL=https://github.com/akonst/tuf/tarball/master
