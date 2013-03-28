@@ -4,9 +4,8 @@
 # Environmental variables shared across Bash scripts.
 
 
-BASE_DIRECTORY=/tmp
+BASE_DIRECTORY=~/pypi.updateframework.com
 PYPI_MIRROR_DIRECTORY=pypi.python.org
-TUF_MIRROR_DIRECTORY=pypi.updateframework.com
 QUICKSTART_DIRECTORY=quickstart
 
 

@@ -12,8 +12,8 @@ source environment.sh
 
 # Our own global variables.
 KEY_SIZE=2048
-KEYSTORE_DIRECTORY=./keystore
-REPOSITORY_DIRECTORY=./repository
+KEYSTORE_DIRECTORY=keystore
+REPOSITORY_DIRECTORY=repository
 REPOSITORY_METADATA_DIRECTORY=$REPOSITORY_DIRECTORY/metadata
 REPOSITORY_TARGETS_DIRECTORY=$REPOSITORY_DIRECTORY/targets
 
@@ -114,6 +114,17 @@ else
 fi
 
 
+# Check for PyPI.
+if [ ! -d $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY ]
+then
+  echo "Please run setup2.sh first!"; exit 1;
+else
+  # Create symbolic links to pypi.python.org subdirectories.
+  ln -fs $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple/ $REPOSITORY_TARGETS_DIRECTORY/simple
+  ln -fs $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/ $REPOSITORY_TARGETS_DIRECTORY/packages
+fi
+
+
 # Create keys for delegated target roles, and setup target delegations.
 # Walk over PyPI directory tree to derive these roles.
 
@@ -123,11 +134,8 @@ delegate_role targets targets simple
 
 # targets/simple -> targets/simple/$PACKAGE
 # http://forums.fedoraforum.org/archive/index.php/t-166962.html
-list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple | while read PACKAGE
+list_directories $REPOSITORY_TARGETS_DIRECTORY/simple | while read PACKAGE
 do
-  # Copy files, for this package, from the PyPI simple index to the TUF targets repository.
-  # TODO: rsync, not just copy!
-  cp -r $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple/$PACKAGE/ $REPOSITORY_TARGETS_DIRECTORY/simple/
   # FIXME: We are burdened to know the password from the previous step.
   delegate_role targets/simple simple "$PACKAGE"
 done
@@ -137,21 +145,18 @@ done
 delegate_role targets targets packages
 
 # targets/packages -> targets/packages/$PYTHON_VERSION
-list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages | while read PYTHON_VERSION
+list_directories $REPOSITORY_TARGETS_DIRECTORY/packages | while read PYTHON_VERSION
 do
   delegate_role targets/packages packages $PYTHON_VERSION
 
   # targets/packages/$PYTHON_VERSION -> targets/packages/$PYTHON_VERSION/$FIRST_LETTER
-  list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION | while read FIRST_LETTER
+  list_directories $REPOSITORY_TARGETS_DIRECTORY/packages/$PYTHON_VERSION | while read FIRST_LETTER
   do
     delegate_role targets/packages/$PYTHON_VERSION $PYTHON_VERSION $FIRST_LETTER
 
     # targets/packages/$PYTHON_VERSION/$FIRST_LETTER -> targets/packages/$PYTHON_VERSION/$FIRST_LETTER/$PACKAGE
-    list_directories $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION/$FIRST_LETTER | while read PACKAGE
+    list_directories $REPOSITORY_TARGETS_DIRECTORY/packages/$PYTHON_VERSION/$FIRST_LETTER | while read PACKAGE
     do
-      # Copy files, for this package, from the PyPI package index to the TUF targets repository.
-      # TODO: rsync, not just copy!
-      cp -r $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/$PYTHON_VERSION/$FIRST_LETTER/$PACKAGE/ $REPOSITORY_TARGETS_DIRECTORY/packages/$PYTHON_VERSION/$FIRST_LETTER/
       delegate_role targets/packages/$PYTHON_VERSION/$FIRST_LETTER $FIRST_LETTER $PACKAGE
     done
   done

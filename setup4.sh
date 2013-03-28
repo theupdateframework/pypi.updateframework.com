@@ -6,8 +6,8 @@ source environment.sh
 
 
 # Our own global variables.
-KEYSTORE_DIRECTORY=./keystore
-REPOSITORY_DIRECTORY=./repository
+KEYSTORE_DIRECTORY=keystore
+REPOSITORY_DIRECTORY=repository
 REPOSITORY_CONFIGURATION_FILE=$REPOSITORY_DIRECTORY/config.cfg
 REPOSITORY_METADATA_DIRECTORY=$REPOSITORY_DIRECTORY/metadata
 
@@ -40,9 +40,6 @@ then
   ./make-timestamp.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY $REPOSITORY_CONFIGURATION_FILE "timestamp"
   if [ $? -eq 0 ]
   then
-    # Copy files from the TUF repository to a designated WWW-accessible directory.
-    # TODO: rsync, not just copy!
-    cp -r $REPOSITORY_DIRECTORY/* $BASE_DIRECTORY/$TUF_MIRROR_DIRECTORY/
     rm make-release.sh make-timestamp.sh
   else
     echo "Could not make a new timestamp!"; exit 1;

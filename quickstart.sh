@@ -11,7 +11,7 @@ set project [lindex $argv 0]
 set timeout 2
 
 
-spawn quickstart.py --project=$project --verbose=1
+spawn quickstart.py --project=$project
 expect ".*When would you like your certificates to expire.*:"
 # TODO: Compute a year from now().
 send "12/01/2013\r"
