@@ -9,15 +9,15 @@
 source environment.sh
 
 
-# Create necessary directories.
-mkdir -p $BASE_DIRECTORY
-mkdir -p $BASE_DIRECTORY/$TUF_MIRROR_DIRECTORY
-mkdir -p $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
-# Copy some scripts to the quickstart directory.
-cp quickstart.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
-
-
-cd $BASE_DIRECTORY
+if [ -d $BASE_DIRECTORY/$QUICKSTART_DIRECTORY ]
+then
+  echo "Please run destroy.sh first!"; exit 1;
+else
+  mkdir $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
+  # Copy some scripts to the quickstart directory.
+  cp quickstart.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
+  cd $BASE_DIRECTORY
+fi
 
 
 # Download virtualenv.
@@ -40,14 +40,17 @@ pip install $TUF_TARBALL
 sudo apt-get install expect
 
 
+# Setup top-level roles.
 cd $QUICKSTART_DIRECTORY
 
+# Pass initially empty mirror directory to the quickstart script.
+EMPTY_DIRECTORY=empty_directory
+mkdir -p $EMPTY_DIRECTORY
+./quickstart.sh $EMPTY_DIRECTORY
 
-# Create top-level TUF roles.
-# Pass mirror directory to the quickstart script.
-./quickstart.sh $BASE_DIRECTORY/$TUF_MIRROR_DIRECTORY
 if [ $? -eq 0 ]
 then
+  rm -rf $EMPTY_DIRECTORY
   rm quickstart.sh
 else
   echo "Could not create top-level TUF roles!"; exit 1;
