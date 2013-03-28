@@ -10,6 +10,7 @@ source environment.sh
 
 
 # Create necessary directories.
+mkdir -p $BASE_DIRECTORY
 mkdir -p $BASE_DIRECTORY/$TUF_MIRROR_DIRECTORY
 mkdir -p $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
 # Copy some scripts to the quickstart directory.
