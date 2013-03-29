@@ -16,6 +16,7 @@ import argparse
 import json
 import os.path
 import sys
+import traceback
 
 import tuf.formats
 import tuf.hash
@@ -69,9 +70,20 @@ def metadata_matches_data(repository_directory, full_role_name):
 
     # For observed_file in targets, does it match the expected_file in metadata?
     if matched:
-      role_targets_directory = os.path.join(targets_directory, full_role_name)
-      observed_targets = os.listdir(role_targets_directory)
+      role_targets_directory = os.path.join(repository_directory, full_role_name)
+
+      # Get the list of observed target files.
+      observed_targets = []
+      for dirpath, dirnames, filenames in os.walk(role_targets_directory):
+        observed_targets.extend(filenames)
+        # Do not recursively walk role_targets_directory.
+        del dirnames[:]
+
       for observed_file in observed_targets:
+        # Ensure that form of observed_file conforms to that of expected_file.
+        # Presently, this means that they do not share the "targets/" prefix.
+        observed_file = os.path.join(full_role_name, observed_file)
+        observed_file = observed_file.split("targets/", 2)[1]
         # observed_file was added, so metadata has diverged from data.
         if observed_file not in expected_targets:
           matched = False
@@ -96,6 +108,7 @@ if __name__ == "__main__":
     # (matched == False) <=> (exit_code == 1)
     exit_code = 1 - int(matched)
   except:
+    traceback.print_exc()
     # Something unexpected happened; we exit with code 2.
     exit_code = 2
   finally:
