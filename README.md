@@ -7,7 +7,7 @@ mirror](https://github.com/dachshund/pip/wiki/PyPI-over-TUF).
     + setup1.sh: Create top-level TUF root roles.
         - quickstart.sh: Drive quickstart.py.
     - setup2.sh: Sync with PyPI.
-    + setup3.sh: Create delegated target roles and setup target delegations.
+    + setup3.sh: Create and update delegated target roles, or their delegations.
         - gen-rsa-key.sh: Drive signercli.py --genrsakey.
         - list-keys.sh: Drive signercli.py --listkeys.
         - make-delegation.sh: Drive signercli.py --makedelegation.
