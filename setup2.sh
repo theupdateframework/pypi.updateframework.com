@@ -9,7 +9,7 @@ cd $BASE_DIRECTORY
 
 
 # Mirror PyPI.
-if [ ! -d $VIRTUALENV_PACKAGE ]
+if [ ! -d $VIRTUAL_ENVIRONMENT ]
 then
   echo "Please run setup1.sh first!"; exit 1;
 else

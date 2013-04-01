@@ -110,7 +110,7 @@ delegate_role () {
 
 
 # Activate virtual environment.
-if [ ! -d $BASE_DIRECTORY/$VIRTUALENV_PACKAGE ]
+if [ ! -d $BASE_DIRECTORY/$VIRTUAL_ENVIRONMENT ]
 then
   echo "Please run setup1.sh first!"; exit 1;
 else

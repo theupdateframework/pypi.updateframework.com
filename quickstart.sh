@@ -14,7 +14,7 @@ set timeout 2
 spawn quickstart.py --project=$project
 expect ".*When would you like your certificates to expire.*:"
 # TODO: Compute a year from now().
-send "12/01/2013\r"
+send "01/01/2014\r"
 
 
 expect ".*Enter the desired threshold for the role 'root':"
