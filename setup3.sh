@@ -38,8 +38,7 @@ role_exists () {
 }
 
 
-# Delegate from PARENT_ROLE_NAME ($1), with PARENT_ROLE_PASSWORD ($2),
-# to CHILD_ROLE_NAME ($3).
+# Delegate from PARENT_ROLE_NAME ($1) to CHILD_ROLE_NAME ($2).
 delegate_role () {
   local PARENT_ROLE_NAME
   local PARENT_ROLE_PASSWORD
@@ -51,12 +50,17 @@ delegate_role () {
   local needs_delegation
 
   PARENT_ROLE_NAME=$1
-  PARENT_ROLE_PASSWORD=$2
-  CHILD_ROLE_NAME=$3
-  CHILD_KEY_NAME=""
-  CHILD_KEY_PASSWORD="$CHILD_ROLE_NAME"
+  CHILD_ROLE_NAME=$2
+
   FULL_ROLL_NAME=$PARENT_ROLE_NAME/$CHILD_ROLE_NAME
   CHILD_FILES_DIRECTORY=$REPOSITORY_DIRECTORY/$FULL_ROLL_NAME
+  CHILD_KEY_NAME=""
+
+  # Simply for demonstration purposes, use predictable passwords for parent and
+  # child. We use the basename of a role name as its password so that we may be
+  # able to predict the password for roles that share the same keys.
+  PARENT_ROLE_PASSWORD=$(basename $PARENT_ROLE_NAME)
+  CHILD_KEY_PASSWORD="$CHILD_ROLE_NAME"
 
   # Assume that we do need to delegate from parent to child.
   needs_delegation=false
@@ -143,9 +147,9 @@ fi
 # TODO: Revoke target roles and their delegations if a catalogued package has been deleted.
 
 # targets -> targets/simple
-delegate_role targets targets simple
+delegate_role targets simple
 # targets -> targets/packages
-delegate_role targets targets packages
+delegate_role targets packages
 
 # Walk over PyPI directory tree to derive the rest of the delegated roles.
 find $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/ -type d | sort | while read DIRECTORY
@@ -158,12 +162,9 @@ do
 
     # Extract delegator and delegatee role names.
     delegator=targets/$(dirname "$DIRECTORY")
-    delegator_password=$(basename $delegator)
     delegatee=$(basename "$DIRECTORY")
 
-    # FIXME: We are burdened to know the password
-    # from the create_key step in delegate_role.
-    delegate_role $delegator $delegator_password "$delegatee"
+    delegate_role $delegator "$delegatee"
   fi
 done
 
