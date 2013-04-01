@@ -172,7 +172,7 @@ done
 
 if [ $? -eq 0 ]
 then
-  rm metadata_matches_data.py gen-rsa-key.sh list-keys.sh make-delegation.sh
+  rm gen-rsa-key.sh list-keys.sh make-delegation.sh
 else
   echo "Could not setup delegated target roles!"; exit 1;
 fi
