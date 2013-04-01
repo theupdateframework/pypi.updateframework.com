@@ -22,22 +22,32 @@ import tuf.formats
 import tuf.hash
 
 
-def metadata_matches_data(repository_directory, full_role_name):
+class MissingTargetMetadataError(Exception):
+  """Denotes which target metadata is missing."""
+
+  def __init__(self, filename):
+    Exception.__init__(self)
+    self.filename = filename
+
+
+def metadata_matches_data(repository_directory, metadata_directory,
+                          targets_directory, full_role_name):
   """
   Return True if metadata matches data for the target role; False otherwise.
   """
-
-  # Assume that metadata is in /path/to/repository/metadata
-  metadata_directory = os.path.join(repository_directory, "metadata")
-  # Assume that metadata is in /path/to/repository/targets
-  targets_directory = os.path.join(repository_directory, "targets")
 
   # Assume that metadata lives in a file specified by the full role name.
   metadata_filename = full_role_name + ".txt"
   metadata_filename = os.path.join(metadata_directory, metadata_filename)
 
-  with open(metadata_filename) as metadata_file:
+  try:
+    metadata_file = open(metadata_filename)
+  except:
+    raise MissingTargetMetadataError(metadata_filename)
+  else:
     all_metadata = json.load(metadata_file)
+    metadata_file.close()
+
     # TODO: Use TUF to verify that all_metadata is correctly signed.
     signed_metadata = all_metadata["signed"]
     # Check that the metadata is well-formed.
@@ -96,20 +106,43 @@ if __name__ == "__main__":
     "does the metadata for a targets role match its target files?")
 
   parser.add_argument('repository_directory', type=str, help='/path/to/repository')
-  parser.add_argument('full_role_name', type=str, help='Full role name.')
+  parser.add_argument('--full_role_name', type=str, help='Full role name.')
 
   args = parser.parse_args()
 
-  # Assume we exit with code 0, which means that metadata matches data.
-  exit_code = 0
-  try:
-    matched = metadata_matches_data(args.repository_directory, args.full_role_name)
-    # (matched == True) <=> (exit_code == 0)
-    # (matched == False) <=> (exit_code == 1)
-    exit_code = 1 - int(matched)
-  except:
-    traceback.print_exc()
-    # Something unexpected happened; we exit with code 2.
-    exit_code = 2
-  finally:
-    sys.exit(exit_code)
+  # Assume that metadata is in /path/to/repository/metadata
+  metadata_directory = os.path.join(args.repository_directory, "metadata")
+  # Assume that metadata is in /path/to/repository/targets
+  targets_directory = os.path.join(args.repository_directory, "targets")
+
+  # Walk over all the metadata and targets in repository_directory.
+  if args.full_role_name is None:
+    for dirpath, dirnames, filenames in os.walk(targets_directory, followlinks=True):
+      full_role_name = dirpath.split(args.repository_directory, 2)[1].lstrip('/')
+
+      try:
+        if not metadata_matches_data(args.repository_directory,
+                                        metadata_directory, targets_directory,
+                                        full_role_name):
+          print("UpdateMetadata: " + full_role_name)
+      except MissingTargetMetadataError as missing_target_metadata_error:
+        print("MissingMetadata: " + full_role_name)
+
+  # Focus only on the given target role.
+  else:
+    # Assume we exit with code 0, which means that metadata matches data.
+    exit_code = 0
+
+    try:
+      matched = metadata_matches_data(args.repository_directory,
+                                      metadata_directory, targets_directory,
+                                      args.full_role_name)
+      # (matched == True) <=> (exit_code == 0)
+      # (matched == False) <=> (exit_code == 1)
+      exit_code = 1 - int(matched)
+    except:
+      traceback.print_exc()
+      # Something unexpected happened; we exit with code 2.
+      exit_code = 2
+    finally:
+      sys.exit(exit_code)

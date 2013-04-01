@@ -72,7 +72,7 @@ delegate_role () {
     needs_delegation=true
   else
     # This is not a new role, but has its metadata diverged from the data?
-    ./metadata_matches_data.py $REPOSITORY_DIRECTORY "$FULL_ROLL_NAME"
+    ./metadata_matches_data.py $REPOSITORY_DIRECTORY --full_role_name "$FULL_ROLL_NAME"
     if [ $? -eq 1 ]
     then
       # Metadata has diverged from data, so we need a delegation.
@@ -138,8 +138,8 @@ then
   echo "Please run setup2.sh first!"; exit 1;
 else
   # Create symbolic links to pypi.python.org subdirectories.
-  ln -fs $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple/ $REPOSITORY_TARGETS_DIRECTORY/simple
-  ln -fs $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/ $REPOSITORY_TARGETS_DIRECTORY/packages
+  ln -fs $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/simple/ $REPOSITORY_TARGETS_DIRECTORY
+  ln -fs $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/packages/ $REPOSITORY_TARGETS_DIRECTORY
 fi
 
 
@@ -152,6 +152,7 @@ delegate_role targets simple
 delegate_role targets packages
 
 # Walk over PyPI directory tree to derive the rest of the delegated roles.
+# TODO: More efficient updates with metadata_matches_data.py?
 find $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/ -type d | sort | while read DIRECTORY
 do
   # If $DIRECTORY matches a package in /simple or /packages...
