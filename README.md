@@ -22,19 +22,24 @@ mirror](https://github.com/dachshund/pip/wiki/PyPI-over-TUF).
 ### Create
 
 ```bash
+# Create top-level/root roles for PyPI.
 $ ./setup1.sh
 ```
 
 ### Update
 ```bash
+# Sync with PyPI.
 $ ./setup2.sh
+# Update targets metadata.
 $ ./setup3.sh
+# Timestamp a release.
 $ ./setup4.sh
 ```
 
 ### Delete
 
 ```bash
+# Delete all TUF metadata.
 $ ./destroy.sh
 ```
 
