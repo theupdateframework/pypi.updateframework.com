@@ -29,8 +29,11 @@ then
 fi
 
 
-# Create our virtual environment.
-python $VIRTUALENV_PACKAGE/virtualenv.py $VIRTUAL_ENVIRONMENT
+# Create and activate our virtual environment.
+if [ ! -d $VIRTUAL_ENVIRONMENT ]
+then
+  python $VIRTUALENV_PACKAGE/virtualenv.py $VIRTUAL_ENVIRONMENT
+fi
 source $VIRTUAL_ENVIRONMENT/bin/activate
 
 
