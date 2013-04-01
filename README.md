@@ -17,11 +17,33 @@ mirror](https://github.com/dachshund/pip/wiki/PyPI-over-TUF).
 - destroy.sh: Destroy pypi.updateframework.com.
 - environment.sh: Shared environmental variables.
 
+## Workflow
+
+### Create
+
+```bash
+$ ./setup1.sh
+```
+
+### Update
+```bash
+$ ./setup2.sh
+$ ./setup3.sh
+$ ./setup4.sh
+```
+
+### Delete
+
+```bash
+$ ./destroy.sh
+```
+
 ## Notes
 
-- On a Debian system, you may need sudo to run these scripts.
+- On a Debian system, you may need sudo to run a command in these scripts.
 + In order to drive a purely automated process of securing a PyPI mirror with
-  TUF metadata, we are using some otherwise bad security practices. Do *not*
+  TUF metadata, we are using some otherwise weak security practices. Do **NOT**
   use these practices for production purposes!
-    - Passing passwords on the command line is a security flaw. Ideally,
-      quickstart.py and signercli.py could read from input files. 
+    - Passing passwords on the command line is a security issue. Ideally, [TUF
+    repository tools could read from input
+    files](https://github.com/akonst/tuf/issues/52).
