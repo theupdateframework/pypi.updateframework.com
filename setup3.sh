@@ -105,13 +105,6 @@ delegate_role () {
 }
 
 
-list_directories(){
-  # TODO: Find a command that preserves quotes,
-  # while ignoring anything other than directories.
-  ls $1
-}
-
-
 # Activate virtual environment.
 if [ ! -d $BASE_DIRECTORY/$VIRTUALENV_PACKAGE ]
 then
@@ -147,41 +140,31 @@ fi
 
 
 # Create or update delegated target roles, or their delegations.
-# Walk over PyPI directory tree to derive these roles.
 # TODO: Revoke target roles and their delegations if a catalogued package has been deleted.
-
 
 # targets -> targets/simple
 delegate_role targets targets simple
-
-# targets/simple -> targets/simple/$PACKAGE
-# http://forums.fedoraforum.org/archive/index.php/t-166962.html
-list_directories $REPOSITORY_TARGETS_DIRECTORY/simple | while read PACKAGE
-do
-  # FIXME: We are burdened to know the password from the previous step.
-  delegate_role targets/simple simple "$PACKAGE"
-done
-
-
 # targets -> targets/packages
 delegate_role targets targets packages
 
-# targets/packages -> targets/packages/$PYTHON_VERSION
-list_directories $REPOSITORY_TARGETS_DIRECTORY/packages | while read PYTHON_VERSION
+# Walk over PyPI directory tree to derive the rest of the delegated roles.
+find $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/ -type d | sort | while read DIRECTORY
 do
-  delegate_role targets/packages packages $PYTHON_VERSION
+  # If $DIRECTORY matches a package in /simple or /packages...
+  if [[ $DIRECTORY =~ $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/(simple|packages)/.+ ]]
+  then
+    # Replace $DIRECTORY with its relevant substring.
+    DIRECTORY=${DIRECTORY#$BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/}
 
-  # targets/packages/$PYTHON_VERSION -> targets/packages/$PYTHON_VERSION/$FIRST_LETTER
-  list_directories $REPOSITORY_TARGETS_DIRECTORY/packages/$PYTHON_VERSION | while read FIRST_LETTER
-  do
-    delegate_role targets/packages/$PYTHON_VERSION $PYTHON_VERSION $FIRST_LETTER
+    # Extract delegator and delegatee role names.
+    delegator=targets/$(dirname "$DIRECTORY")
+    delegator_password=$(basename $delegator)
+    delegatee=$(basename "$DIRECTORY")
 
-    # targets/packages/$PYTHON_VERSION/$FIRST_LETTER -> targets/packages/$PYTHON_VERSION/$FIRST_LETTER/$PACKAGE
-    list_directories $REPOSITORY_TARGETS_DIRECTORY/packages/$PYTHON_VERSION/$FIRST_LETTER | while read PACKAGE
-    do
-      delegate_role targets/packages/$PYTHON_VERSION/$FIRST_LETTER $FIRST_LETTER $PACKAGE
-    done
-  done
+    # FIXME: We are burdened to know the password
+    # from the create_key step in delegate_role.
+    delegate_role $delegator $delegator_password "$delegatee"
+  fi
 done
 
 
