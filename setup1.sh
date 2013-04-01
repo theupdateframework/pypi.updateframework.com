@@ -36,7 +36,7 @@ source $VIRTUAL_ENVIRONMENT/bin/activate
 
 # Install TUF, expect.
 # TODO: Conditional install.
-pip install $TUF_TARBALL
+pip install --upgrade $TUF_TARBALL
 sudo apt-get install expect
 
 
