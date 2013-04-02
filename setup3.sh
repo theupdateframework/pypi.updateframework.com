@@ -146,27 +146,18 @@ fi
 # Create or update delegated target roles, or their delegations.
 # TODO: Revoke target roles and their delegations if a catalogued package has been deleted.
 
-# targets -> targets/simple
-delegate_role targets simple
-# targets -> targets/packages
-delegate_role targets packages
-
 # Walk over PyPI directory tree to derive the rest of the delegated roles.
 # TODO: More efficient updates with metadata_matches_data.py?
-find $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/ -type d | sort | while read DIRECTORY
+find -L $REPOSITORY_TARGETS_DIRECTORY -type d -regex "$REPOSITORY_TARGETS_DIRECTORY/.+" | sort | while read DIRECTORY
 do
-  # If $DIRECTORY matches a package in /simple or /packages...
-  if [[ $DIRECTORY =~ $BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/(simple|packages)/.+ ]]
-  then
-    # Replace $DIRECTORY with its relevant substring.
-    DIRECTORY=${DIRECTORY#$BASE_DIRECTORY/$PYPI_MIRROR_DIRECTORY/web/}
+  # Replace $DIRECTORY with its relevant substring.
+  DIRECTORY=${DIRECTORY#$REPOSITORY_DIRECTORY/}
 
-    # Extract delegator and delegatee role names.
-    delegator=targets/$(dirname "$DIRECTORY")
-    delegatee=$(basename "$DIRECTORY")
+  # Extract delegator and delegatee role names.
+  delegator=$(dirname "$DIRECTORY")
+  delegatee=$(basename "$DIRECTORY")
 
-    delegate_role $delegator "$delegatee"
-  fi
+  delegate_role $delegator "$delegatee"
 done
 
 
