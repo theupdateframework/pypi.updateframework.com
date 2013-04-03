@@ -30,6 +30,9 @@ class MissingTargetMetadataError(Exception):
     self.filename = filename
 
 
+# TODO:
+# - Check that delegating target paths of parent/delegator matches all target
+# paths of full_role_name?
 def metadata_matches_data(repository_directory, metadata_directory,
                           targets_directory, full_role_name):
   """

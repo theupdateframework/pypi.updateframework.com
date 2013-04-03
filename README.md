@@ -39,9 +39,32 @@ $ ./setup4.sh
 ### Delete
 
 ```bash
-# Delete all TUF metadata.
+# Caution: Delete all TUF metadata!
 $ ./destroy.sh
 ```
+
+## Output
+
+By default (unless you modify the environment variables in `environment.sh`),
+`setup.sh` would generate output like this:
+
++ `~/pypi.updateframework.com`
+    - `~/pypi.updateframework.com/bandersnatch` 
+    - `~/pypi.updateframework.com/bandersnatch.conf`
+    + `~/pypi.updateframework.com/pypi.python.org`
+        - Your very own PyPI mirror.
+    + `~/pypi.updateframework.com/quickstart`
+        + `~/pypi.updateframework.com/quickstart/client`
+            - Initial TUF metadata you would distribute with your PyPI
+            installer.
+        + `~/pypi.updateframework.com/quickstart/keystore`
+            - All the PyPI keys, which you would normally keep super-secure and
+            certainly not in the same place.
+        + `~/pypi.updateframework.com/quickstart/repository`
+            - TUF metadata for PyPI that you would publicly serve.
+    - `~/pypi.updateframework.com/virtualenv-1.9.1`
+    - `~/pypi.updateframework.com/virtualenv-1.9.1.tar.gz`
+    - `~/pypi.updateframework.com/virtual_python`
 
 ## Notes
 
