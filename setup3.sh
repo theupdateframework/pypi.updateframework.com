@@ -90,9 +90,12 @@ delegate_role () {
       if [[ $PARENT_ROLE_NAME =~ targets/packages/.+/.+ ]]
       then
         # Does targets/simple/$CHILD_ROLE_NAME exist? If so, reuse its key.
+        # In other words, we reuse the simple package key for all of its actual packages.
+        # Warning: this depends on the simple metadata having been generated earlier.
         CHILD_KEY_NAME=$(get_key "targets/simple/$CHILD_ROLE_NAME")
       else
         # Does targets/packages/.*/$CHILD_ROLE_NAME exist? If so, reuse its key.
+        # In other words, we are sharing the "first letter" keys across "Python versions".
         CHILD_KEY_NAME=$(get_key "targets/packages/.*/$CHILD_ROLE_NAME")
       fi
     fi
@@ -106,6 +109,29 @@ delegate_role () {
 
     ./make-delegation.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY "$CHILD_FILES_DIRECTORY" $PARENT_ROLE_NAME $PARENT_ROLE_PASSWORD "$CHILD_ROLE_NAME" $CHILD_KEY_NAME "$CHILD_KEY_PASSWORD"
   fi
+}
+
+
+# Walk over PyPI subdirectory ($1) tree to derive the rest of the delegated roles.
+# TODO: More efficient updates with metadata_matches_data.py?
+walk_repository_targets_subdirectory () {
+  local REPOSITORY_TARGETS_SUBDIRECTORY
+  local delegator
+  local delegatee
+
+  REPOSITORY_TARGETS_SUBDIRECTORY=$1
+
+  find -L $REPOSITORY_TARGETS_SUBDIRECTORY -type d | sort | while read DIRECTORY
+  do
+    # Replace $DIRECTORY with its relevant substring.
+    DIRECTORY=${DIRECTORY#$REPOSITORY_DIRECTORY/}
+
+    # Extract delegator and delegatee role names.
+    delegator=$(dirname "$DIRECTORY")
+    delegatee=$(basename "$DIRECTORY")
+
+    delegate_role $delegator "$delegatee"
+  done
 }
 
 
@@ -144,21 +170,10 @@ fi
 
 
 # Create or update delegated target roles, or their delegations.
+# Crucial for sharing keys that we first walk /simple, then /packages.
 # TODO: Revoke target roles and their delegations if a catalogued package has been deleted.
-
-# Walk over PyPI directory tree to derive the rest of the delegated roles.
-# TODO: More efficient updates with metadata_matches_data.py?
-find -L $REPOSITORY_TARGETS_DIRECTORY -type d -regex "$REPOSITORY_TARGETS_DIRECTORY/.+" | sort | while read DIRECTORY
-do
-  # Replace $DIRECTORY with its relevant substring.
-  DIRECTORY=${DIRECTORY#$REPOSITORY_DIRECTORY/}
-
-  # Extract delegator and delegatee role names.
-  delegator=$(dirname "$DIRECTORY")
-  delegatee=$(basename "$DIRECTORY")
-
-  delegate_role $delegator "$delegatee"
-done
+walk_repository_targets_subdirectory $REPOSITORY_TARGETS_DIRECTORY/simple
+walk_repository_targets_subdirectory $REPOSITORY_TARGETS_DIRECTORY/packages
 
 
 if [ $? -eq 0 ]
