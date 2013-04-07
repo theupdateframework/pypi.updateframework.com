@@ -32,12 +32,6 @@ get_key() {
 }
 
 
-# Does rolename ($1) exist in our keystore?
-role_exists () {
-  echo $(./list-keys.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY | grep "'$1'" -c)
-}
-
-
 # Delegate from PARENT_ROLE_NAME ($1) to CHILD_ROLE_NAME ($2).
 delegate_role () {
   local PARENT_ROLE_NAME
@@ -65,19 +59,19 @@ delegate_role () {
   # Assume that we do need to delegate from parent to child.
   needs_delegation=false
 
-  # Is this a new role?
-  if [ $(role_exists "$FULL_ROLL_NAME") -eq 0 ]
+  # Does the expected role metadata exist?
+  if [ -e $REPOSITORY_METADATA_DIRECTORY/$FULL_ROLL_NAME.txt ]
   then
-    # Then we need a delegation.
-    needs_delegation=true
-  else
-    # This is not a new role, but has its metadata diverged from the data?
+    # The role exists, but has its metadata diverged from the data?
     ./metadata_matches_data.py $REPOSITORY_DIRECTORY --full_role_name "$FULL_ROLL_NAME"
     if [ $? -eq 1 ]
     then
       # Metadata has diverged from data, so we need a delegation.
       needs_delegation=true
     fi
+  else
+    # This role does not exist, so we need a delegation.
+    needs_delegation=true
   fi
 
   # Do we need to delegate from parent to child?
