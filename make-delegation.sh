@@ -15,40 +15,40 @@ set target_role_name [lindex $argv 5]
 set target_key_name [lindex $argv 6]
 set target_key_password [lindex $argv 7]
 # Set expect timeout to N seconds.
-set timeout 2
+set timeout -1
 
 
 spawn signercli.py --makedelegation $keystore_directory
-expect ".*Enter the metadata directory.*:"
+expect "Enter the metadata directory:"
 send "$repository_metadata_directory\r"
 
 
-expect ".*Enter the directory containing the delegated role's target files.*:"
+expect "Enter the directory containing the delegated role's target files:"
 send "$target_files_directory\r"
 
 
-expect ".*Choose and enter the parent role's full name.*:"
+expect "Choose and enter the parent role's full name:"
 send "$parent_role_name\r"
 
 
-expect ".*Enter the password for $parent_role_name.*:"
+expect "Enter the password for $parent_role_name "
 send "$parent_role_password\r"
 
 
-expect ".*Enter the delegated role's name.*:"
+expect "Enter the delegated role's name:"
 send "$target_role_name\r"
 
 
-expect ".*Enter the keyid or \"quit\" when done.*:"
+expect "Enter the keyid or \"quit\" when done:"
 send "$target_key_name\r"
 
 
-expect ".*Enter the keyid's password:.*:"
+expect "Enter the keyid's password:"
 send "$target_key_password\r"
 
 
-expect ".*Enter the keyid or \"quit\" when done.*:"
+expect "Enter the keyid or \"quit\" when done:"
 send "quit\r"
 
 
-expect ".*Signing.*"
+expect "Signing "

@@ -9,12 +9,12 @@
 set keystore_directory [lindex $argv 0]
 set repository_metadata_directory [lindex $argv 1]
 # Set expect timeout to N seconds.
-set timeout 2
+set timeout -1
 
 
 spawn signercli.py --listkeys $keystore_directory
-expect ".*Enter the metadata directory.*:"
+expect "Enter the metadata directory:"
 send "$repository_metadata_directory\r"
 
 
-expect ".*Listing the keyids in.*"
+expect "Listing the keyids in "
