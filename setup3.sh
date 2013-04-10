@@ -87,6 +87,7 @@ delegate_role () {
     if [ $? -eq 1 ]
     then
       # Metadata has diverged from data, so we need a delegation.
+      echo "Stale role: $FULL_ROLE_NAME"
       needs_delegation=true
 
       # Get key for extant role.
@@ -96,9 +97,13 @@ delegate_role () {
       then
         echo "Key missing for extant role! => $FULL_ROLL_NAME"; exit 1;
       fi
+    else
+      # TODO: Handle abnormal exit from metadata_matches_data.py.
+      echo "Fresh role: $FULL_ROLE_NAME"
     fi
   else
     # This role does not exist, so we need a delegation.
+    echo "New role: $FULL_ROLE_NAME"
     needs_delegation=true
 
     # Is the child a simple target?
