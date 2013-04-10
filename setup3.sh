@@ -11,11 +11,30 @@ source environment.sh
 
 
 # Our own global variables.
+KEY_LIST=keylist.txt
 KEY_SIZE=2048
 KEYSTORE_DIRECTORY=keystore
 REPOSITORY_DIRECTORY=repository
 REPOSITORY_METADATA_DIRECTORY=$REPOSITORY_DIRECTORY/metadata
 REPOSITORY_TARGETS_DIRECTORY=$REPOSITORY_DIRECTORY/targets
+
+
+# Create key with keystore ($1), bit_length ($2), password ($3),
+cache_key () {
+  local FULL_ROLE_NAME
+  local CHILD_KEY_NAME
+
+  CHILD_KEY_NAME=$1
+  FULL_ROLE_NAME=$2
+
+  # We silently discard a null $CHILD_KEY_NAME.
+  # Is the $CHILD_KEY_NAME not null?
+  if [ -n $CHILD_KEY_NAME ]
+  then
+    # TODO: *uniquely* record $FULL_ROLL_NAME
+    echo "$CHILD_KEY_NAME $FULL_ROLL_NAME" >> $KEY_LIST
+  fi
+}
 
 
 # Create key with keystore ($1), bit_length ($2), password ($3),
@@ -26,9 +45,10 @@ create_key () {
 }
 
 
-# Does rolename ($1) exist in our keystore? If so, get its key.
+# Does rolename ($1) exist in our cached list of keys? If so, get its key.
+# NOTE: We handle duplicates by caring about only the first matching role.
 get_key() {
-  echo $(./list-keys.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY | grep "'$1'" | grep -Po '[\da-f]{64}')
+  echo $(grep -m 1 "$1" $KEY_LIST | grep -Po '^[\da-f]{64}')
 }
 
 
@@ -68,40 +88,77 @@ delegate_role () {
     then
       # Metadata has diverged from data, so we need a delegation.
       needs_delegation=true
+
+      # Get key for extant role.
+      CHILD_KEY_NAME=$(get_key "$FULL_ROLL_NAME")
+      # Freak out if key is MIA.
+      if [ -z $CHILD_KEY_NAME ]
+      then
+        echo "Key missing for extant role! => $FULL_ROLL_NAME"; exit 1;
+      fi
     fi
   else
     # This role does not exist, so we need a delegation.
     needs_delegation=true
+
+    # Is the child a simple target?
+    if [[ "$CHILD_ROLE_NAME" =~ simple(/.+)? ]]
+    then
+      # Generate and cache a new key.
+      CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
+      cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
+    else
+      # TODO: assert that "$CHILD_ROLE_NAME" =~ packages(/.+)?
+
+      # Is the parent in targets/packages/.+?
+      if [[ $PARENT_ROLE_NAME =~ targets/packages/.+ ]]
+      then
+        # Is the parent in targets/packages/.+/.+?
+        if [[ $PARENT_ROLE_NAME =~ targets/packages/.+/.+ ]]
+        then
+          # Does targets/simple/$CHILD_ROLE_NAME exist? If so, reuse its key.
+          # In other words, we reuse the simple package key for all of its actual packages.
+          # Warning: this depends on the simple metadata having been generated earlier.
+          CHILD_KEY_NAME=$(get_key "targets/simple/$CHILD_ROLE_NAME")
+          cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
+        else
+          # Does targets/packages/.*/$CHILD_ROLE_NAME exist? If so, reuse its key.
+          # In other words, we are sharing the "first letter" keys across "Python versions".
+          CHILD_KEY_NAME=$(get_key "targets/packages/.*/$CHILD_ROLE_NAME")
+
+          # If we are the first such Python version, then generate and cache a new key.
+          if [ -z $CHILD_KEY_NAME ]
+          then
+            CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
+          fi
+
+          cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
+        fi
+      else
+        # Generate and cache a new key.
+        CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
+        cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
+      fi
+    fi
   fi
 
   # Do we need to delegate from parent to child?
   if $needs_delegation
   then
-    # Is the parent in targets/packages/.+?
-    if [[ $PARENT_ROLE_NAME =~ targets/packages/.+ ]]
-    then
-      # Is the parent in targets/packages/.+/.+?
-      if [[ $PARENT_ROLE_NAME =~ targets/packages/.+/.+ ]]
-      then
-        # Does targets/simple/$CHILD_ROLE_NAME exist? If so, reuse its key.
-        # In other words, we reuse the simple package key for all of its actual packages.
-        # Warning: this depends on the simple metadata having been generated earlier.
-        CHILD_KEY_NAME=$(get_key "targets/simple/$CHILD_ROLE_NAME")
-      else
-        # Does targets/packages/.*/$CHILD_ROLE_NAME exist? If so, reuse its key.
-        # In other words, we are sharing the "first letter" keys across "Python versions".
-        CHILD_KEY_NAME=$(get_key "targets/packages/.*/$CHILD_ROLE_NAME")
-      fi
-    fi
-
-    # Do we have a target key yet?
+    # Do we have a child key yet?
     if [ -z $CHILD_KEY_NAME ]
     then
-      # If not, generate a new key.
-      CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
-    fi
+      echo "Key missing for making role delegation! => $FULL_ROLL_NAME"; exit 1;
+    else
+      # Proceed with delegation.
+      ./make-delegation.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY "$CHILD_FILES_DIRECTORY" $PARENT_ROLE_NAME $PARENT_ROLE_PASSWORD "$CHILD_ROLE_NAME" $CHILD_KEY_NAME "$CHILD_KEY_PASSWORD"
 
-    ./make-delegation.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY "$CHILD_FILES_DIRECTORY" $PARENT_ROLE_NAME $PARENT_ROLE_PASSWORD "$CHILD_ROLE_NAME" $CHILD_KEY_NAME "$CHILD_KEY_PASSWORD"
+      # Freak out on failure.
+      if [ $? -ne 0 ]
+      then
+        echo "Delegation failed! => $FULL_ROLL_NAME"; exit 1;
+      fi
+    fi
   fi
 }
 
@@ -146,7 +203,6 @@ else
   # Copy some scripts to the quickstart directory.
   cp metadata_matches_data.py $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cp gen-rsa-key.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
-  cp list-keys.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cp make-delegation.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cd $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
 fi
@@ -172,7 +228,8 @@ walk_repository_targets_subdirectory $REPOSITORY_TARGETS_DIRECTORY/packages
 
 if [ $? -eq 0 ]
 then
-  rm gen-rsa-key.sh list-keys.sh make-delegation.sh
+  # We keep metadata_matches_data.py because it is a useful utility.
+  rm gen-rsa-key.sh make-delegation.sh
 else
   echo "Could not setup delegated target roles!"; exit 1;
 fi
