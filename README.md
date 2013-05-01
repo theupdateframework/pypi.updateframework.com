@@ -49,7 +49,6 @@ By default (unless you modify the environment variables in `environment.sh`),
 `setup.sh` would generate output like this:
 
 + `~/pypi.updateframework.com`
-    - `~/pypi.updateframework.com/bandersnatch` 
     - `~/pypi.updateframework.com/bandersnatch.conf`
     + `~/pypi.updateframework.com/pypi.python.org`
         - Your very own PyPI mirror.

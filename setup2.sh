@@ -15,17 +15,8 @@ else
   cd $BASE_DIRECTORY
   source $VIRTUAL_ENVIRONMENT/bin/activate
 
-  # Do we not have bandersnatch?
-  if [ ! -d bandersnatch ]
-  then
-    # Install and setup bandersnatch.
-    sudo apt-get install mercurial
-    hg clone https://bitbucket.org/ctheune/bandersnatch
-    cd bandersnatch
-    python bootstrap.py
-    bin/buildout
-    cd $BASE_DIRECTORY
-  fi
+  # Install bandersnatch.
+  pip install --upgrade -r https://bitbucket.org/ctheune/bandersnatch/raw/stable/requirements.txt
 
-  bandersnatch/bin/bsn-mirror -c bandersnatch.conf
+  bandersnatch -c bandersnatch.conf mirror
 fi
