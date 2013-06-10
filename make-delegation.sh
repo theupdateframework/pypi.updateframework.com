@@ -9,11 +9,12 @@
 set keystore_directory [lindex $argv 0]
 set repository_metadata_directory [lindex $argv 1]
 set target_files_directory [lindex $argv 2]
-set parent_role_name [lindex $argv 3]
-set parent_role_password [lindex $argv 4]
-set target_role_name [lindex $argv 5]
-set target_key_name [lindex $argv 6]
-set target_key_password [lindex $argv 7]
+set recursive_walk [lindex $argv 3]
+set parent_role_name [lindex $argv 4]
+set parent_role_password [lindex $argv 5]
+set target_role_name [lindex $argv 6]
+set target_key_name [lindex $argv 7]
+set target_key_password [lindex $argv 8]
 # Set expect timeout to N seconds.
 set timeout -1
 
@@ -25,6 +26,10 @@ send "$repository_metadata_directory\r"
 
 expect "Enter the directory containing the delegated role's target files:"
 send "$target_files_directory\r"
+
+
+expect "Recursively walk the given directory? (Y)es/(N)o:"
+send "$recursive_walk\r"
 
 
 expect "Choose and enter the parent role's full name:"

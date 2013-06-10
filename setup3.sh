@@ -19,7 +19,7 @@ REPOSITORY_METADATA_DIRECTORY=$REPOSITORY_DIRECTORY/metadata
 REPOSITORY_TARGETS_DIRECTORY=$REPOSITORY_DIRECTORY/targets
 
 
-# Create key with keystore ($1), bit_length ($2), password ($3),
+# Associate key name ($1) with full roll name ($2).
 cache_key () {
   local FULL_ROLE_NAME
   local CHILD_KEY_NAME
@@ -52,22 +52,24 @@ get_key() {
 }
 
 
-# Delegate from PARENT_ROLE_NAME ($1) to CHILD_ROLE_NAME ($2).
+# Delegate CHILD_FILES_DIRECTORY ($3) from PARENT_ROLE_NAME ($1) to
+# CHILD_ROLE_NAME ($2).
 delegate_role () {
-  local PARENT_ROLE_NAME
-  local PARENT_ROLE_PASSWORD
   local CHILD_FILES_DIRECTORY
   local CHILD_KEY_NAME
   local CHILD_KEY_PASSWORD
   local CHILD_ROLE_NAME
   local FULL_ROLL_NAME
+  local PARENT_ROLE_NAME
+  local PARENT_ROLE_PASSWORD
+  local RECURSIVE_WALK
   local needs_delegation
 
   PARENT_ROLE_NAME=$1
   CHILD_ROLE_NAME=$2
+  CHILD_FILES_DIRECTORY=$3
 
   FULL_ROLL_NAME=$PARENT_ROLE_NAME/$CHILD_ROLE_NAME
-  CHILD_FILES_DIRECTORY=$REPOSITORY_DIRECTORY/$FULL_ROLL_NAME
   CHILD_KEY_NAME=""
 
   # Simply for demonstration purposes, use predictable passwords for parent and
@@ -75,6 +77,9 @@ delegate_role () {
   # able to predict the password for roles that share the same keys.
   PARENT_ROLE_PASSWORD=$(basename $PARENT_ROLE_NAME)
   CHILD_KEY_PASSWORD="$CHILD_ROLE_NAME"
+
+  # Recursively walk the child files directory? (Y)es/(N)o
+  RECURSIVE_WALK='Y'
 
   # Assume that we do need to delegate from parent to child.
   needs_delegation=false
@@ -106,45 +111,9 @@ delegate_role () {
     echo "New role: $FULL_ROLE_NAME"
     needs_delegation=true
 
-    # Is the child a simple target?
-    if [[ "$CHILD_ROLE_NAME" =~ simple(/.+)? ]]
-    then
-      # Generate and cache a new key.
-      CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
-      cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
-    else
-      # TODO: assert that "$CHILD_ROLE_NAME" =~ packages(/.+)?
-
-      # Is the parent in targets/packages/.+?
-      if [[ $PARENT_ROLE_NAME =~ targets/packages/.+ ]]
-      then
-        # Is the parent in targets/packages/.+/.+?
-        if [[ $PARENT_ROLE_NAME =~ targets/packages/.+/.+ ]]
-        then
-          # Does targets/simple/$CHILD_ROLE_NAME exist? If so, reuse its key.
-          # In other words, we reuse the simple package key for all of its actual packages.
-          # Warning: this depends on the simple metadata having been generated earlier.
-          CHILD_KEY_NAME=$(get_key "targets/simple/$CHILD_ROLE_NAME")
-          cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
-        else
-          # Does targets/packages/.*/$CHILD_ROLE_NAME exist? If so, reuse its key.
-          # In other words, we are sharing the "first letter" keys across "Python versions".
-          CHILD_KEY_NAME=$(get_key "targets/packages/.*/$CHILD_ROLE_NAME")
-
-          # If we are the first such Python version, then generate and cache a new key.
-          if [ -z $CHILD_KEY_NAME ]
-          then
-            CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
-          fi
-
-          cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
-        fi
-      else
-        # Generate and cache a new key.
-        CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
-        cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
-      fi
-    fi
+    # Generate and cache a new key.
+    CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
+    cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
   fi
 
   # Do we need to delegate from parent to child?
@@ -156,7 +125,7 @@ delegate_role () {
       echo "Key missing for making role delegation! => $FULL_ROLL_NAME"; exit 1;
     else
       # Proceed with delegation.
-      ./make-delegation.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY "$CHILD_FILES_DIRECTORY" $PARENT_ROLE_NAME $PARENT_ROLE_PASSWORD "$CHILD_ROLE_NAME" $CHILD_KEY_NAME "$CHILD_KEY_PASSWORD"
+      ./make-delegation.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY "$CHILD_FILES_DIRECTORY" $RECURSIVE_WALK $PARENT_ROLE_NAME $PARENT_ROLE_PASSWORD "$CHILD_ROLE_NAME" $CHILD_KEY_NAME "$CHILD_KEY_PASSWORD"
 
       # Freak out on failure.
       if [ $? -ne 0 ]
@@ -165,29 +134,6 @@ delegate_role () {
       fi
     fi
   fi
-}
-
-
-# Walk over PyPI subdirectory ($1) tree to derive the rest of the delegated roles.
-# TODO: More efficient updates with metadata_matches_data.py?
-walk_repository_targets_subdirectory () {
-  local REPOSITORY_TARGETS_SUBDIRECTORY
-  local delegator
-  local delegatee
-
-  REPOSITORY_TARGETS_SUBDIRECTORY=$1
-
-  find -L $REPOSITORY_TARGETS_SUBDIRECTORY -type d | sort | while read DIRECTORY
-  do
-    # Replace $DIRECTORY with its relevant substring.
-    DIRECTORY=${DIRECTORY#$REPOSITORY_DIRECTORY/}
-
-    # Extract delegator and delegatee role names.
-    delegator=$(dirname "$DIRECTORY")
-    delegatee=$(basename "$DIRECTORY")
-
-    delegate_role $delegator "$delegatee"
-  done
 }
 
 
@@ -225,10 +171,9 @@ fi
 
 
 # Create or update delegated target roles, or their delegations.
-# Crucial for sharing keys that we first walk /simple, then /packages.
+# By default, we delegate everything in PyPI from targets to targets/stable.
+delegate_role targets stable $REPOSITORY_TARGETS_DIRECTORY
 # TODO: Revoke target roles and their delegations if a catalogued package has been deleted.
-walk_repository_targets_subdirectory $REPOSITORY_TARGETS_DIRECTORY/simple
-walk_repository_targets_subdirectory $REPOSITORY_TARGETS_DIRECTORY/packages
 
 
 if [ $? -eq 0 ]
