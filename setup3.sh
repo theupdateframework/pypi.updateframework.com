@@ -111,9 +111,18 @@ delegate_role () {
     echo "New role: $FULL_ROLE_NAME"
     needs_delegation=true
 
-    # Generate and cache a new key.
-    CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
-    cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
+    # We might already have a key for this new role.
+    CHILD_KEY_NAME=$(get_key "$FULL_ROLE_NAME")
+
+    # If not, then create and cache a new key.
+    if [ -z $CHILD_KEY_NAME ]
+    then
+      # Generate and cache a new key.
+      CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
+      cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
+    else
+      echo "Reusing extant key for new role..."
+    fi
   fi
 
   # Do we need to delegate from parent to child?
