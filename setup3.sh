@@ -31,8 +31,8 @@ cache_key () {
   # Is the $CHILD_KEY_NAME not null?
   if [ -n $CHILD_KEY_NAME ]
   then
-    # TODO: *uniquely* record $FULL_ROLL_NAME
-    echo "$CHILD_KEY_NAME $FULL_ROLL_NAME" >> $KEY_LIST
+    # TODO: *uniquely* record $FULL_ROLE_NAME
+    echo "$CHILD_KEY_NAME $FULL_ROLE_NAME" >> $KEY_LIST
   fi
 }
 
@@ -59,7 +59,7 @@ delegate_role () {
   local CHILD_KEY_NAME
   local CHILD_KEY_PASSWORD
   local CHILD_ROLE_NAME
-  local FULL_ROLL_NAME
+  local FULL_ROLE_NAME
   local PARENT_ROLE_NAME
   local PARENT_ROLE_PASSWORD
   local RECURSIVE_WALK
@@ -69,7 +69,7 @@ delegate_role () {
   CHILD_ROLE_NAME=$2
   CHILD_FILES_DIRECTORY=$3
 
-  FULL_ROLL_NAME=$PARENT_ROLE_NAME/$CHILD_ROLE_NAME
+  FULL_ROLE_NAME=$PARENT_ROLE_NAME/$CHILD_ROLE_NAME
   CHILD_KEY_NAME=""
 
   # Simply for demonstration purposes, use predictable passwords for parent and
@@ -85,10 +85,10 @@ delegate_role () {
   needs_delegation=false
 
   # Does the expected role metadata exist?
-  if [ -e $REPOSITORY_METADATA_DIRECTORY/"$FULL_ROLL_NAME".txt ]
+  if [ -e $REPOSITORY_METADATA_DIRECTORY/"$FULL_ROLE_NAME".txt ]
   then
     # The role exists, but has its metadata diverged from the data?
-    ./metadata_matches_data.py $REPOSITORY_DIRECTORY --full_role_name "$FULL_ROLL_NAME"
+    ./metadata_matches_data.py $REPOSITORY_DIRECTORY --full_role_name "$FULL_ROLE_NAME"
     if [ $? -eq 1 ]
     then
       # Metadata has diverged from data, so we need a delegation.
@@ -96,11 +96,11 @@ delegate_role () {
       needs_delegation=true
 
       # Get key for extant role.
-      CHILD_KEY_NAME=$(get_key "$FULL_ROLL_NAME")
+      CHILD_KEY_NAME=$(get_key "$FULL_ROLE_NAME")
       # Freak out if key is MIA.
       if [ -z $CHILD_KEY_NAME ]
       then
-        echo "Key missing for extant role! => $FULL_ROLL_NAME"; exit 1;
+        echo "Key missing for extant role! => $FULL_ROLE_NAME"; exit 1;
       fi
     else
       # TODO: Handle abnormal exit from metadata_matches_data.py.
@@ -122,7 +122,7 @@ delegate_role () {
     # Do we have a child key yet?
     if [ -z $CHILD_KEY_NAME ]
     then
-      echo "Key missing for making role delegation! => $FULL_ROLL_NAME"; exit 1;
+      echo "Key missing for making role delegation! => $FULL_ROLE_NAME"; exit 1;
     else
       # Proceed with delegation.
       ./make-delegation.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY "$CHILD_FILES_DIRECTORY" $RECURSIVE_WALK $PARENT_ROLE_NAME $PARENT_ROLE_PASSWORD "$CHILD_ROLE_NAME" $CHILD_KEY_NAME "$CHILD_KEY_PASSWORD"
@@ -130,7 +130,7 @@ delegate_role () {
       # Freak out on failure.
       if [ $? -ne 0 ]
       then
-        echo "Delegation failed! => $FULL_ROLL_NAME"; exit 1;
+        echo "Delegation failed! => $FULL_ROLE_NAME"; exit 1;
       fi
     fi
   fi
