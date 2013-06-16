@@ -50,3 +50,4 @@ send "timestamp\r"
 
 
 expect "Successfully created the repository."
+wait

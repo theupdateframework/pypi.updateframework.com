@@ -57,3 +57,4 @@ send "quit\r"
 
 
 expect "Signing "
+wait

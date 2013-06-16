@@ -25,3 +25,4 @@ send "$target_key_password\r"
 
 
 expect "Done."
+wait

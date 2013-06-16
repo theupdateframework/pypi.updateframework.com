@@ -28,3 +28,4 @@ send "$release_password\r"
 
 
 expect "Done."
+wait

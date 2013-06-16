@@ -28,3 +28,4 @@ send "$timestamp_password\r"
 
 
 expect "Done."
+wait
