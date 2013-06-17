@@ -77,9 +77,11 @@ def metadata_matches_data(repository_directory, metadata_directory,
           if observed_file_digest != expected_file_digest:
             # Metadata has probably diverged from data.
             matched = False
+            break
       else:
         # expected_file was deleted, so metadata has diverged from data.
         matched = False
+        break
 
     # For observed_file in targets, does it match the expected_file in metadata?
     if matched:
@@ -100,6 +102,7 @@ def metadata_matches_data(repository_directory, metadata_directory,
         # observed_file was added, so metadata has diverged from data.
         if observed_file not in expected_targets:
           matched = False
+          break
 
     return matched
 
