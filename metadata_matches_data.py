@@ -6,9 +6,9 @@ A simple command-line utility to determine whether the metadata for a targets
 role matches its target files.
 
 Usage:
-    # Given the repository directory,
-    # does the targets/simple/Django metadata match its target files?
-    $ metadata_matches_data.py repository targets/simple/Django
+    # Given the repository directory, does the targets/unstable metadata match
+    # its target files?
+    $ metadata_matches_data.py repository targets/unstable
 """
 
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     "does the metadata for a targets role match its target files?")
 
   parser.add_argument('repository_directory', type=str, help='/path/to/repository')
-  parser.add_argument('--full_role_name', type=str, help='Full role name.')
+  parser.add_argument('full_role_name', type=str, help='Full role name.')
 
   args = parser.parse_args()
 
@@ -121,34 +121,22 @@ if __name__ == "__main__":
   # Assume that metadata is in /path/to/repository/targets
   targets_directory = os.path.join(args.repository_directory, "targets")
 
-  # Walk over all the metadata and targets in repository_directory.
-  if args.full_role_name is None:
-    for dirpath, dirnames, filenames in os.walk(targets_directory, followlinks=True):
-      full_role_name = dirpath.split(args.repository_directory, 2)[1].lstrip('/')
-
-      try:
-        if not metadata_matches_data(args.repository_directory,
-                                        metadata_directory, targets_directory,
-                                        full_role_name):
-          print("UpdateMetadata: " + full_role_name)
-      except MissingTargetMetadataError as missing_target_metadata_error:
-        print("MissingMetadata: " + full_role_name)
-
   # Focus only on the given target role.
-  else:
-    # Assume we exit with code 0, which means that metadata matches data.
-    exit_code = 0
+  # Assume we exit with code 0, which means that metadata matches data.
+  exit_code = 0
 
-    try:
-      matched = metadata_matches_data(args.repository_directory,
-                                      metadata_directory, targets_directory,
-                                      args.full_role_name)
-      # (matched == True) <=> (exit_code == 0)
-      # (matched == False) <=> (exit_code == 1)
-      exit_code = 1 - int(matched)
-    except:
-      traceback.print_exc()
-      # Something unexpected happened; we exit with code 2.
-      exit_code = 2
-    finally:
-      sys.exit(exit_code)
+  try:
+    matched = metadata_matches_data(args.repository_directory,
+                                    metadata_directory, targets_directory,
+                                    args.full_role_name)
+    # (matched == True) <=> (exit_code == 0)
+    # (matched == False) <=> (exit_code == 1)
+    exit_code = 1 - int(matched)
+  except:
+    traceback.print_exc()
+    # Something unexpected happened; we exit with code 2.
+    exit_code = 2
+  finally:
+    sys.exit(exit_code)
+
+

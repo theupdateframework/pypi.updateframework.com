@@ -88,7 +88,7 @@ delegate_role () {
   if [ -e $REPOSITORY_METADATA_DIRECTORY/"$FULL_ROLE_NAME".txt ]
   then
     # The role exists, but has its metadata diverged from the data?
-    ./metadata_matches_data.py $REPOSITORY_DIRECTORY --full_role_name "$FULL_ROLE_NAME"
+    ./metadata_matches_data.py $REPOSITORY_DIRECTORY "$FULL_ROLE_NAME"
     if [ $? -eq 1 ]
     then
       # Metadata has diverged from data, so we need a delegation.
@@ -161,9 +161,9 @@ then
   echo "Please run setup1.sh first!"; exit 1;
 else
   # Copy some scripts to the quickstart directory.
-  cp metadata_matches_data.py $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cp gen-rsa-key.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cp make-delegation.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
+  cp metadata_matches_data.py $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cd $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
 fi
 
@@ -180,15 +180,15 @@ fi
 
 
 # Create or update delegated target roles, or their delegations.
-# By default, we delegate everything in PyPI from targets to targets/stable.
-delegate_role targets stable $REPOSITORY_TARGETS_DIRECTORY
+# By default, we delegate everything in PyPI from targets to the unstable role.
+delegate_role targets unstable $REPOSITORY_TARGETS_DIRECTORY
 # TODO: Revoke target roles and their delegations if a catalogued package has been deleted.
 
 
 if [ $? -eq 0 ]
 then
-  # We keep metadata_matches_data.py because it is a useful utility.
-  rm gen-rsa-key.sh make-delegation.sh
+  # Remove ancillary shell scripts.
+  rm gen-rsa-key.sh make-delegation.sh metadata_matches_data.py
 else
   echo "Could not setup delegated target roles!"; exit 1;
 fi

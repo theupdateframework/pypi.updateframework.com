@@ -9,8 +9,8 @@ mirror](https://github.com/dachshund/pip/wiki/PyPI-over-TUF).
     - setup2.sh: Sync with PyPI.
     + setup3.sh: Create or update delegated target roles, or their delegations.
         - gen-rsa-key.sh: Drive signercli.py --genrsakey.
-        - list-keys.sh: Drive signercli.py --listkeys.
         - make-delegation.sh: Drive signercli.py --makedelegation.
+        - metadata_matches_data.py: Check metadata against data.
     + setup4.sh: Make a new release and timestamp.
         - make-release.sh: Drive signercli.py --makerelease.
         - make-timestamp.sh: Drive signercli.py --maketimestamp.
