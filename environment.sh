@@ -4,7 +4,7 @@
 # Environmental variables shared across Bash scripts.
 
 
-BASE_DIRECTORY=~/pypi.updateframework.com
+BASE_DIRECTORY=$HOME/pypi.updateframework.com
 PYPI_MIRROR_DIRECTORY=pypi.python.org
 QUICKSTART_DIRECTORY=quickstart
 
