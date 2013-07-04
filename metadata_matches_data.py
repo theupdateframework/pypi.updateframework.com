@@ -34,7 +34,8 @@ class MissingTargetMetadataError(Exception):
 # - Check that delegating target paths of parent/delegator matches all target
 # paths of full_role_name?
 def metadata_matches_data(repository_directory, metadata_directory,
-                          targets_directory, full_role_name):
+                          targets_directory, full_role_name, files_directory,
+                          recursive_walk=False, followlinks=True):
   """
   Return True if metadata matches data for the target role; False otherwise.
   """
@@ -85,20 +86,23 @@ def metadata_matches_data(repository_directory, metadata_directory,
 
     # For observed_file in targets, does it match the expected_file in metadata?
     if matched:
-      role_targets_directory = os.path.join(repository_directory, full_role_name)
-
       # Get the list of observed target files.
       observed_targets = []
-      for dirpath, dirnames, filenames in os.walk(role_targets_directory):
-        observed_targets.extend(filenames)
-        # Do not recursively walk role_targets_directory.
-        del dirnames[:]
+      for dirpath, dirnames, filenames in os.walk(files_directory,
+                                                  followlinks=followlinks):
+        for filename in filenames:
+          full_target_path = os.path.join(dirpath, filename)
+          # Ensure that form of observed_file conforms to that of expected_file.
+          # Presently, this means that they do not share the "targets/" prefix.
+          relative_target_path = full_target_path[len(targets_directory)+1:]
+          observed_targets.append(relative_target_path)
+
+        # Prune the subdirectories to walk right now if we do not wish to
+        # recursively walk files_directory.
+        if recursive_walk is False:
+          del dirnames[:]
 
       for observed_file in observed_targets:
-        # Ensure that form of observed_file conforms to that of expected_file.
-        # Presently, this means that they do not share the "targets/" prefix.
-        observed_file = os.path.join(full_role_name, observed_file)
-        observed_file = observed_file.split("targets/", 2)[1]
         # observed_file was added, so metadata has diverged from data.
         if observed_file not in expected_targets:
           matched = False
@@ -111,24 +115,51 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Given a TUF repository, " + \
     "does the metadata for a targets role match its target files?")
 
-  parser.add_argument('repository_directory', type=str, help='/path/to/repository')
+  parser.add_argument('repository_directory', type=str,
+                      help='/path/to/repository')
   parser.add_argument('full_role_name', type=str, help='Full role name.')
+  parser.add_argument('files_directory', type=str,
+                      help='/path/to/repository/targets(/subdirectory)?')
+  parser.add_argument('recursive_walk', type=str,
+                      help='Recursively walk files_directory? [Y]es/[N]o')
 
   args = parser.parse_args()
+  repository_directory = args.repository_directory
+  full_role_name = args.full_role_name
+  files_directory = args.files_directory
+  recursive_walk = args.recursive_walk
 
+  repository_directory = os.path.abspath(repository_directory)
   # Assume that metadata is in /path/to/repository/metadata
-  metadata_directory = os.path.join(args.repository_directory, "metadata")
+  metadata_directory = os.path.join(repository_directory, "metadata")
   # Assume that metadata is in /path/to/repository/targets
-  targets_directory = os.path.join(args.repository_directory, "targets")
+  targets_directory = os.path.join(repository_directory, "targets")
+  files_directory = os.path.abspath(files_directory)
+
+  # Sanity checks.
+  assert os.path.isdir(repository_directory)
+  assert metadata_directory.startswith(repository_directory)
+  assert os.path.isdir(metadata_directory)
+  assert targets_directory.startswith(repository_directory)
+  assert os.path.isdir(targets_directory)
+  assert files_directory.startswith(targets_directory)
+  assert os.path.isdir(files_directory)
+  assert recursive_walk in ('Y', 'N')
+
+  if recursive_walk == 'Y':
+    recursive_walk = True
+  else:
+    recursive_walk = False
 
   # Focus only on the given target role.
   # Assume we exit with code 0, which means that metadata matches data.
   exit_code = 0
 
   try:
-    matched = metadata_matches_data(args.repository_directory,
+    matched = metadata_matches_data(repository_directory,
                                     metadata_directory, targets_directory,
-                                    args.full_role_name)
+                                    full_role_name, files_directory,
+                                    recursive_walk=recursive_walk)
     # (matched == True) <=> (exit_code == 0)
     # (matched == False) <=> (exit_code == 1)
     exit_code = 1 - int(matched)

@@ -88,7 +88,7 @@ delegate_role () {
   if [ -e $REPOSITORY_METADATA_DIRECTORY/"$FULL_ROLE_NAME".txt ]
   then
     # The role exists, but has its metadata diverged from the data?
-    ./metadata_matches_data.py $REPOSITORY_DIRECTORY "$FULL_ROLE_NAME"
+    ./metadata_matches_data.py $REPOSITORY_DIRECTORY "$FULL_ROLE_NAME" $CHILD_FILES_DIRECTORY $RECURSIVE_WALK
     if [ $? -eq 1 ]
     then
       # Metadata has diverged from data, so we need a delegation.
@@ -182,7 +182,6 @@ fi
 # Create or update delegated target roles, or their delegations.
 # By default, we delegate everything in PyPI from targets to the unstable role.
 delegate_role targets unstable $REPOSITORY_TARGETS_DIRECTORY
-# TODO: Revoke target roles and their delegations if a catalogued package has been deleted.
 
 
 if [ $? -eq 0 ]
