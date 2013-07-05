@@ -8,7 +8,9 @@ mirror](https://github.com/dachshund/pip/wiki/PyPI-over-TUF).
         - quickstart.sh: Drive quickstart.py.
     - setup2.sh: Sync with PyPI.
     + setup3.sh: Create or update delegated target roles, or their delegations.
+        - delegate_stable_targets.py: Automatically delegate stable targets.
         - gen-rsa-key.sh: Drive signercli.py --genrsakey.
+        - list-keys.sh: Drive signercli.py --listkeys.
         - make-delegation.sh: Drive signercli.py --makedelegation.
         - metadata_matches_data.py: Check metadata against data.
     + setup4.sh: Make a new release and timestamp.

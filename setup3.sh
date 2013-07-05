@@ -11,30 +11,11 @@ source environment.sh
 
 
 # Our own global variables.
-KEY_LIST=keylist.txt
 KEY_SIZE=2048
 KEYSTORE_DIRECTORY=keystore
 REPOSITORY_DIRECTORY=repository
 REPOSITORY_METADATA_DIRECTORY=$REPOSITORY_DIRECTORY/metadata
 REPOSITORY_TARGETS_DIRECTORY=$REPOSITORY_DIRECTORY/targets
-
-
-# Associate key name ($1) with full roll name ($2).
-cache_key () {
-  local FULL_ROLE_NAME
-  local CHILD_KEY_NAME
-
-  CHILD_KEY_NAME=$1
-  FULL_ROLE_NAME=$2
-
-  # We silently discard a null $CHILD_KEY_NAME.
-  # Is the $CHILD_KEY_NAME not null?
-  if [ -n $CHILD_KEY_NAME ]
-  then
-    # TODO: *uniquely* record $FULL_ROLE_NAME
-    echo "$CHILD_KEY_NAME $FULL_ROLE_NAME" >> $KEY_LIST
-  fi
-}
 
 
 # Create key with keystore ($1), bit_length ($2), password ($3),
@@ -46,9 +27,8 @@ create_key () {
 
 
 # Does rolename ($1) exist in our cached list of keys? If so, get its key.
-# NOTE: We handle duplicates by caring about only the first matching role.
 get_key() {
-  echo $(grep -m 1 "$1" $KEY_LIST | grep -Po '^[\da-f]{64}')
+  echo $(./list-keys.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY | grep "'$1'" | grep -Po '[\da-f]{64}')
 }
 
 
@@ -119,7 +99,6 @@ delegate_role () {
     then
       # Generate and cache a new key.
       CHILD_KEY_NAME=$(create_key $KEYSTORE_DIRECTORY $KEY_SIZE "$CHILD_KEY_PASSWORD")
-      cache_key $CHILD_KEY_NAME "$FULL_ROLE_NAME"
     else
       echo "Reusing extant key for new role..."
     fi
@@ -161,7 +140,9 @@ then
   echo "Please run setup1.sh first!"; exit 1;
 else
   # Copy some scripts to the quickstart directory.
+  cp delegate_stable_targets.py $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cp gen-rsa-key.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
+  cp list-keys.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cp make-delegation.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cp metadata_matches_data.py $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cd $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
@@ -180,14 +161,21 @@ fi
 
 
 # Create or update delegated target roles, or their delegations.
-# By default, we delegate everything in PyPI from targets to the unstable role.
+# Delegate all "stable" targets (e.g. all targets older than a month) to the
+# stable role.
+./delegate_stable_targets.py
+# Then, delegate all targets to the unstable role.
 delegate_role targets unstable $REPOSITORY_TARGETS_DIRECTORY
 
 
 if [ $? -eq 0 ]
 then
   # Remove ancillary shell scripts.
-  rm gen-rsa-key.sh make-delegation.sh metadata_matches_data.py
+  rm delegate_stable_targets.py
+  rm gen-rsa-key.sh
+  rm list-keys.sh
+  rm make-delegation.sh
+  rm metadata_matches_data.py
 else
   echo "Could not setup delegated target roles!"; exit 1;
 fi

@@ -33,9 +33,9 @@ class MissingTargetMetadataError(Exception):
 # TODO:
 # - Check that delegating target paths of parent/delegator matches all target
 # paths of full_role_name?
-def metadata_matches_data(repository_directory, metadata_directory,
-                          targets_directory, full_role_name, files_directory,
-                          recursive_walk=False, followlinks=True):
+def metadata_matches_data(metadata_directory, targets_directory, full_role_name,
+                          files_directory, recursive_walk=False,
+                          followlinks=True):
   """
   Return True if metadata matches data for the target role; False otherwise.
   """
@@ -156,8 +156,7 @@ if __name__ == "__main__":
   exit_code = 0
 
   try:
-    matched = metadata_matches_data(repository_directory,
-                                    metadata_directory, targets_directory,
+    matched = metadata_matches_data(metadata_directory, targets_directory,
                                     full_role_name, files_directory,
                                     recursive_walk=recursive_walk)
     # (matched == True) <=> (exit_code == 0)
