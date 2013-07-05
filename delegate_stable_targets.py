@@ -10,10 +10,14 @@ environment, as it would defeat the secure practice of separating "stable"
 targets with offline keys from "unstable" targets with online keys."""
 
 
+import datetime
 import os.path
 
 import tuf.repo.keystore as keystore
+import tuf.repo.signercli as signercli
 import tuf.repo.signerlib as signerlib
+
+import metadata_matches_data
 
 
 
@@ -23,7 +27,7 @@ import tuf.repo.signerlib as signerlib
 KEY_SIZE=2048
 
 TARGETS_ROLE_NAME = "targets"
-STABLE_TARGETS_ROLE_NAME = "targets/stable"
+STABLE_TARGETS_ROLE_NAME = "stable"
 
 TARGETS_ROLE_PASSWORDS = ["targets"]
 STABLE_TARGETS_ROLE_PASSWORDS = ["stable"]
@@ -44,7 +48,7 @@ def check_sanity():
   assert os.path.isdir(REPOSITORY_DIRECTORY)
   assert METADATA_DIRECTORY.startswith(REPOSITORY_DIRECTORY)
   assert os.path.isdir(METADATA_DIRECTORY)
-  assert targets_directory.startswith(REPOSITORY_DIRECTORY)
+  assert TARGETS_DIRECTORY.startswith(REPOSITORY_DIRECTORY)
   assert os.path.isdir(TARGETS_DIRECTORY)
 
 
@@ -71,6 +75,11 @@ def generate_rsa_keys(passwords):
 
 
 def load_targets_roles_keys():
+  """Return the RSA key IDs for the targets and stable targets roles.
+
+  Side effect: Load the aforementioned RSA keys into the TUF keystore.
+  """
+
   # Get all the target roles and their respective keyids.
   # These keyids will let the user know which roles are currently known.
   # signerlib.get_target_keyids() returns a dictionary that looks something
@@ -111,21 +120,49 @@ def load_targets_roles_keys():
 
 
 def make_delegation():
-  # TODO: use metadata_matches_data to check files_directory
+  # TODO: use metadata_matches_data to check TARGETS_DIRECTORY
+
   targets_role_keys, stable_targets_role_keys = load_targets_roles_keys()
 
+  now = datetime.datetime.now()
+
+  def accept_file_if_older_than_a_month(full_target_path):
+    stat = os.stat(full_target_path)
+    # We read the last time PyPI modified this file.
+    then = datetime.datetime.fromtimestamp(stat.st_mtime)
+    time_delta = now - then
+    # Was this file last modified at least a month ago?
+    if time_delta.days >= 30:
+      return True
+    else:
+      return False
+
+  # Retrieve "stable" targets for the stable targets role.
+  delegated_paths = signerlib.get_targets(TARGETS_DIRECTORY,
+                                          recursive_walk=True,
+                                          followlinks=True,
+                                          file_predicate=accept_file_if_older_than_a_month)
+
+  # Filter delegated_paths to be relative to the TARGETS_DIRECTORY.
+  # Presently, this means that they share the "targets/" prefix.
+  for index in xrange(len(delegated_paths)):
+    full_target_path = delegated_paths[index]
+    assert full_target_path.startswith(TARGETS_DIRECTORY)
+    relative_target_path = full_target_path[len(REPOSITORY_DIRECTORY)+1:]
+    delegated_paths[index] = relative_target_path
+
   # Create, sign, and write the delegated role's metadata file.
-  delegated_paths = _make_delegated_metadata(METADATA_DIRECTORY,
-                                             delegated_targets_directory,
-                                             TARGETS_ROLE_NAME, STABLE_TARGETS_ROLE_NAME,
-                                             delegated_keyids,
-                                             recursive_walk=True,
-                                             followlinks=True)
+  signercli._make_delegated_metadata(METADATA_DIRECTORY, delegated_paths,
+                                     TARGETS_ROLE_NAME,
+                                     STABLE_TARGETS_ROLE_NAME,
+                                     stable_targets_role_keys)
 
   # Update the parent role's metadata file.  The parent role's delegation
   # field must be updated with the newly created delegated role.
-  _update_parent_metadata(METADATA_DIRECTORY, STABLE_TARGETS_ROLE_NAME, delegated_keyids,
-                          delegated_paths, TARGETS_ROLE_NAME, parent_keyids)
+  signercli._update_parent_metadata(METADATA_DIRECTORY,
+                                    STABLE_TARGETS_ROLE_NAME,
+                                    stable_targets_role_keys, delegated_paths,
+                                    TARGETS_ROLE_NAME, targets_role_keys)
 
 
 

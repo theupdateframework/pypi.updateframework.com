@@ -20,6 +20,7 @@ import traceback
 
 import tuf.formats
 import tuf.hash
+import tuf.repo.signerlib as signerlib
 
 
 class MissingTargetMetadataError(Exception):
@@ -87,22 +88,15 @@ def metadata_matches_data(metadata_directory, targets_directory, full_role_name,
     # For observed_file in targets, does it match the expected_file in metadata?
     if matched:
       # Get the list of observed target files.
-      observed_targets = []
-      for dirpath, dirnames, filenames in os.walk(files_directory,
-                                                  followlinks=followlinks):
-        for filename in filenames:
-          full_target_path = os.path.join(dirpath, filename)
-          # Ensure that form of observed_file conforms to that of expected_file.
-          # Presently, this means that they do not share the "targets/" prefix.
-          relative_target_path = full_target_path[len(targets_directory)+1:]
-          observed_targets.append(relative_target_path)
-
-        # Prune the subdirectories to walk right now if we do not wish to
-        # recursively walk files_directory.
-        if recursive_walk is False:
-          del dirnames[:]
+      observed_targets = signerlib.get_targets(files_directory,
+                                               recursive_walk=recursive_walk,
+                                               followlinks=followlinks)
 
       for observed_file in observed_targets:
+        # Ensure that form of observed_file conforms to that of expected_file.
+        # Presently, this means that they do not share the "targets/" prefix.
+        assert observed_file.startswith(targets_directory)
+        observed_file = observed_file[len(targets_directory)+1:]
         # observed_file was added, so metadata has diverged from data.
         if observed_file not in expected_targets:
           matched = False
