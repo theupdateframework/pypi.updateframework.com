@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 
+
+
+
 """
 A simple command-line utility to determine whether the metadata for a targets
 role matches its target files.
@@ -12,15 +15,29 @@ Usage:
 """
 
 
+
+
+
 import argparse
 import json
+import logging
 import os.path
 import sys
 import traceback
 
 import tuf.formats
 import tuf.hash
+import tuf.log
 import tuf.repo.signerlib as signerlib
+
+
+
+
+
+logger = logging.getLogger('tuf.pypi.updateframework.com')
+
+
+
 
 
 class MissingTargetMetadataError(Exception):
@@ -31,12 +48,16 @@ class MissingTargetMetadataError(Exception):
     self.filename = filename
 
 
+
+
+
 # TODO:
 # - Check that delegating target paths of parent/delegator matches all target
 # paths of full_role_name?
 def metadata_matches_data(metadata_directory, targets_directory, full_role_name,
                           files_directory, recursive_walk=False,
-                          followlinks=True):
+                          followlinks=True,
+                          file_predicate=signerlib.accept_any_file):
   """
   Return True if metadata matches data for the target role; False otherwise.
   """
@@ -78,19 +99,26 @@ def metadata_matches_data(metadata_directory, targets_directory, full_role_name,
           observed_file_digest = observed_file_digest_object.hexdigest()
           if observed_file_digest != expected_file_digest:
             # Metadata has probably diverged from data.
+            logger.info("{0} != {1}".format(observed_file, expected_file))
             matched = False
             break
       else:
         # expected_file was deleted, so metadata has diverged from data.
+        logger.info("{0} has been deleted".format(expected_file))
         matched = False
         break
 
     # For observed_file in targets, does it match the expected_file in metadata?
     if matched:
+      # FIXME: Temporary hack to workaround Python 2 not returning filenames in
+      # Unicode unless you do tricks like this:
+      # http://docs.python.org/2/howto/unicode.html#unicode-filenames
+      files_directory = unicode(files_directory, encoding="utf-8")
       # Get the list of observed target files.
       observed_targets = signerlib.get_targets(files_directory,
                                                recursive_walk=recursive_walk,
-                                               followlinks=followlinks)
+                                               followlinks=followlinks,
+                                               file_predicate=file_predicate)
 
       for observed_file in observed_targets:
         # Ensure that form of observed_file conforms to that of expected_file.
@@ -99,10 +127,14 @@ def metadata_matches_data(metadata_directory, targets_directory, full_role_name,
         observed_file = observed_file[len(targets_directory)+1:]
         # observed_file was added, so metadata has diverged from data.
         if observed_file not in expected_targets:
+          logger.info("{0} is new".format(observed_file))
           matched = False
           break
 
     return matched
+
+
+
 
 
 if __name__ == "__main__":
@@ -162,5 +194,8 @@ if __name__ == "__main__":
     exit_code = 2
   finally:
     sys.exit(exit_code)
+
+
+
 
 

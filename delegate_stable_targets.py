@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 
+
+
+
 """A simple program to automatically delegate "stable" targets (i.e. targets
 older than, say, a month). This is useful for automation of the development
 environment on pypi.updateframework.com.
@@ -17,7 +20,8 @@ import tuf.repo.keystore as keystore
 import tuf.repo.signercli as signercli
 import tuf.repo.signerlib as signerlib
 
-import metadata_matches_data
+from metadata_matches_data import (MissingTargetMetadataError,
+                                   metadata_matches_data)
 
 
 
@@ -39,11 +43,18 @@ METADATA_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, "metadata")
 # Assume that metadata is in /path/to/repository/targets
 TARGETS_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, "targets")
 
+# Recursively walk the targets directory?
+RECURSIVE_WALK = True
+# Follow symbolic links in the targets directory?
+FOLLOWLINKS = True
+
 
 
 
 
 def check_sanity():
+  """Check that we correctly set some parameters."""
+
   assert os.path.isdir(KEYSTORE_DIRECTORY)
   assert os.path.isdir(REPOSITORY_DIRECTORY)
   assert METADATA_DIRECTORY.startswith(REPOSITORY_DIRECTORY)
@@ -119,29 +130,61 @@ def load_targets_roles_keys():
 
 
 
+# Set the default test for the "stability" of a target file.
+def file_predicate(full_target_path, now=datetime.datetime.now()):
+  """Was this file last modified at least a month ago?"""
+
+  # We must fix a "now" time for the file "stability" test.
+  # Note that "now" is fixed between calls to this function because in Python,
+  # default parameters are evaluated once:
+  # http://docs.python-guide.org/en/latest/writing/gotchas.html
+
+  stat = os.stat(full_target_path)
+  then = datetime.datetime.fromtimestamp(stat.st_mtime)
+  time_delta = now - then
+  if time_delta.days >= 30:
+    return True
+  else:
+    return False
+
+
+
+
+
+def need_delegation():
+  """We need a delegation if the stable targets metadata does not match the
+  data."""
+
+  matched = False
+
+  try:
+    stable_targets_role_name = os.path.join(TARGETS_ROLE_NAME,
+                                            STABLE_TARGETS_ROLE_NAME)
+    matched = metadata_matches_data(METADATA_DIRECTORY, TARGETS_DIRECTORY,
+                                    stable_targets_role_name,
+                                    TARGETS_DIRECTORY,
+                                    recursive_walk=RECURSIVE_WALK,
+                                    followlinks=FOLLOWLINKS,
+                                    file_predicate=file_predicate)
+  except MissingTargetMetadataError:
+    matched = False
+  except:
+    raise
+  finally:
+    return not matched
+
+
+
+
+
 def make_delegation():
-  # TODO: use metadata_matches_data to check TARGETS_DIRECTORY
-
-  targets_role_keys, stable_targets_role_keys = load_targets_roles_keys()
-
-  now = datetime.datetime.now()
-
-  def accept_file_if_older_than_a_month(full_target_path):
-    stat = os.stat(full_target_path)
-    # We read the last time PyPI modified this file.
-    then = datetime.datetime.fromtimestamp(stat.st_mtime)
-    time_delta = now - then
-    # Was this file last modified at least a month ago?
-    if time_delta.days >= 30:
-      return True
-    else:
-      return False
+  """Make the delegation from targets to the stable targets roles."""
 
   # Retrieve "stable" targets for the stable targets role.
   delegated_paths = signerlib.get_targets(TARGETS_DIRECTORY,
-                                          recursive_walk=True,
-                                          followlinks=True,
-                                          file_predicate=accept_file_if_older_than_a_month)
+                                          recursive_walk=RECURSIVE_WALK,
+                                          followlinks=FOLLOWLINKS,
+                                          file_predicate=file_predicate)
 
   # Filter delegated_paths to be relative to the TARGETS_DIRECTORY.
   # Presently, this means that they share the "targets/" prefix.
@@ -150,6 +193,9 @@ def make_delegation():
     assert full_target_path.startswith(TARGETS_DIRECTORY)
     relative_target_path = full_target_path[len(REPOSITORY_DIRECTORY)+1:]
     delegated_paths[index] = relative_target_path
+
+  # Load targets roles keys into memory, and get the key IDs.
+  targets_role_keys, stable_targets_role_keys = load_targets_roles_keys()
 
   # Create, sign, and write the delegated role's metadata file.
   signercli._make_delegated_metadata(METADATA_DIRECTORY, delegated_paths,
@@ -171,7 +217,8 @@ def make_delegation():
 ############################# MAIN FUNCTION ###################################
 if __name__ == "__main__":
   check_sanity()
-  make_delegation()
+  if need_delegation():
+    make_delegation()
 
 
 
