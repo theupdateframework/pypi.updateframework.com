@@ -102,6 +102,9 @@ def metadata_matches_data(metadata_directory, targets_directory, full_role_name,
             logger.info("{0} != {1}".format(observed_file, expected_file))
             matched = False
             break
+
+        # Break out of the outer for loop in case we found a mismatch.
+        if not matched: break
       else:
         # expected_file was deleted, so metadata has diverged from data.
         logger.info("{0} has been deleted".format(expected_file))

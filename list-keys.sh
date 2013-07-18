@@ -17,5 +17,5 @@ expect "Enter the metadata directory:"
 send "$repository_metadata_directory\r"
 
 
-expect "Listing the keyids in "
+expect "Listing the keyids in .*"
 wait
