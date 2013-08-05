@@ -10,7 +10,7 @@ QUICKSTART_DIRECTORY=quickstart
 
 
 VIRTUALENV_PATH=https://pypi.python.org/packages/source/v/virtualenv/
-VIRTUALENV_PACKAGE=virtualenv-1.9.1
+VIRTUALENV_PACKAGE=virtualenv-1.10
 PACKAGE_EXTENSION=tar.gz
 VIRTUAL_ENVIRONMENT=virtual_python
 
