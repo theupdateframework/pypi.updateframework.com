@@ -8,11 +8,11 @@ from __future__ import division
 
 import os.path
 
+from tuf.log import logger
+
 import tuf.hash as hasher
 import tuf.repo.signercli as signercli
 import tuf.repo.signerlib as signerlib
-
-from tuf.log import logger
 
 import delegate
 
@@ -63,15 +63,27 @@ def make_delegation():
     absolute_delegated_paths_in_bin[bin_index] += [absolute_delegated_path] 
 
 
-  # FIXME: Delegate every target to the "unclaimed" targets role.
-  # Presently, the master branch does not recognize directories yet.
+  # Delegate every target to the "unclaimed" targets role.
+  # Presently, every target falls under the "simple/" and "packages/"
+  # directories.
+  unclaimed_relative_delegated_paths = [
+    # FIXME: Presently, the TUF master branch does not recognize directories as
+    # valid delegated paths, so we will uncomment this once Vlad's metadata
+    # branch has been merged with master.
+    #"simple/", "packages/"
+  ]
+
   # TODO: This needs to happen only once.
-  unclaimed_relative_delegated_paths = []
   delegate.make_delegation(delegate.TARGETS_ROLE_NAME,
                            delegate.UNCLAIMED_TARGETS_ROLE_NAME,
                            unclaimed_relative_delegated_paths)
 
-  # Delagate from the "unclaimed" targets role to each bin.
+  # Delegate from the "unclaimed" targets role to each bin.
+  # TODO: Comment on shared keys.
+
+  unclaimed_targets_role_keys = \
+    delegate.get_keys_for_targets_role(delegate.UNCLAIMED_TARGETS_ROLE_NAME)
+
   for bin_index in xrange(NUMBER_OF_BINS):
     # The bin index in hex padded from the left with zeroes for up to the
     # PREFIX_LENGTH.
@@ -81,8 +93,6 @@ def make_delegation():
     relative_delegated_paths_in_this_bin = \
       delegate.get_relative_delegated_paths(absolute_delegated_paths_in_this_bin)
     relative_binned_targets_role_name = bin_index_in_hex
-    unclaimed_targets_role_keys = \
-      delegate.get_keys_for_targets_role(delegate.UNCLAIMED_TARGETS_ROLE_NAME)
 
     # Write and sign the delegatee metadata file.
     # TODO: Update delegatee only if necessary to do so.
@@ -113,7 +123,7 @@ def make_delegation():
     len(absolute_delegated_paths)/NUMBER_OF_BINS
 
   observed_number_of_paths_in_all_bins = \
-    sum(absolute_delegated_paths_in_bin.values())
+    sum((len(paths) for paths in absolute_delegated_paths_in_bin.values()))
 
   observed_number_of_bins = len(absolute_delegated_paths_in_bin)
 
