@@ -10,6 +10,7 @@ environment on pypi.updateframework.com."""
 
 
 import datetime
+import json
 import os
 import time
 
@@ -32,10 +33,12 @@ import check
 # http://csrc.nist.gov/publications/nistpubs/800-131A/sp800-131A.pdf
 KEY_SIZE=2048
 
+# Top-level role names.
 RELEASE_ROLE_NAME = 'release'
 TARGETS_ROLE_NAME = 'targets'
 TIMESTAMP_ROLE_NAME = 'timestamp'
 
+# Delegated targets role names.
 CLAIMED_TARGETS_ROLE_NAME = '{0}/claimed'.format(TARGETS_ROLE_NAME)
 RECENTLY_CLAIMED_TARGETS_ROLE_NAME = \
   '{0}/recently-claimed'.format(TARGETS_ROLE_NAME)
@@ -53,15 +56,21 @@ ROLE_NAME_TO_PASSWORDS = {
   UNCLAIMED_TARGETS_ROLE_NAME: ['unclaimed']
 }
 
+# Some expected directories and files.
 KEYSTORE_DIRECTORY = os.path.abspath('keystore')
 REPOSITORY_DIRECTORY = os.path.abspath('repository')
-# Assume that config is in /path/to/repository/config.cfg
+# Assume that config is at repository/config.cfg
 CONFIGURATION_FILE = os.path.join(REPOSITORY_DIRECTORY, 'config.cfg')
-# Assume that metadata is in /path/to/repository/metadata
+# Assume that metadata is in repository/metadata
 METADATA_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, 'metadata')
-# Assume that metadata is in /path/to/repository/targets
+# Assume that metadata is in repository/targets
 TARGETS_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, 'targets')
 
+# Where are these metadata files expected to be located?
+RELEASE_ROLE_FILE = os.path.join(METADATA_DIRECTORY,
+                                 '{0}.txt'.format(RELEASE_ROLE_NAME))
+TIMESTAMP_ROLE_FILE = os.path.join(METADATA_DIRECTORY,
+                                 '{0}.txt'.format(TIMESTAMP_ROLE_NAME))
 
 
 
@@ -205,6 +214,31 @@ def get_relative_delegated_paths(absolute_delegated_paths):
 
 
 
+# TODO: Verify signature on metadata!
+def get_version_number(metadata_filename):
+  version_number = None
+
+  if os.path.isfile(metadata_filename):
+    with open(metadata_filename) as metadata_file:
+      metadata_dict = json.load(metadata_file)
+      signed_metadata = metadata_dict['signed']
+      version_number = signed_metadata['version']
+      logger.info('Previous version for {0}: {1}'.format(metadata_filename,
+                  version_number))
+      version_number += 1
+      logger.info('Current version for {0}: {1}'.format(metadata_filename,
+                  version_number))
+  else:
+    logger.warn('{0} does not exist! Assuming first version...'.format(
+                metadata_filename))
+    version_number = 1
+
+  return version_number
+
+
+
+
+
 def make_delegation(delegator_targets_role_name, delegatee_targets_role_name,
                     relative_delegated_paths=None,
                     path_hash_prefix=None):
@@ -305,17 +339,17 @@ def update_targets_metadata(targets_role_name, relative_delegated_paths,
   assert targets_role_name == 'targets' or \
          targets_role_name.startswith('targets/')
 
-  # The first time a parent role creates a delegation, a directory
-  # containing the parent role's name is created in the metadata
-  # directory.  For example, if the targets roles creates a delegated
-  # role 'role1', the metadata directory would then contain:
+  # The first time a parent role creates a delegation, a directory containing
+  # the parent role's name is created in the metadata directory.  For example,
+  # if the targets roles creates a delegated role 'role1', the metadata
+  # directory would then contain:
   # '{METADATA_DIRECTORY}/targets/role1.txt', where 'role1.txt' is the
   # delegated role's metadata file.
   # If delegated role 'role1' creates its own delegated role 'role2', the
   # metadata directory would then contain:
   # '{METADATA_DIRECTORY}/targets/role1/role2.txt'.
-  # When creating a delegated role, if the parent directory already
-  # exists, this means a prior delegation has been perform by the parent.
+  # When creating a delegated role, if the parent directory already exists,
+  # this means a prior delegation has been performed by the parent.
 
   parent_role_name = os.path.dirname(targets_role_name)
   child_role_name = os.path.basename(targets_role_name)
@@ -330,10 +364,7 @@ def update_targets_metadata(targets_role_name, relative_delegated_paths,
                                        targets_role_filename)
 
   expiration_date = get_expiration_date(time_delta)
-
-  # TODO: Increment version number on update by reading a verified copy of
-  # extant metadata.
-  version_number = 1
+  version_number = get_version_number(targets_role_filename)
 
   # Prepare the targets metadata.
   targets_metadata = \
@@ -351,13 +382,8 @@ def update_targets_metadata(targets_role_name, relative_delegated_paths,
 
 def update_release(time_delta):
   expiration_date = get_expiration_date(time_delta)
-
-  # TODO: Increment version number on update by reading a verified copy of
-  # extant metadata.
-  version_number = 1
-
-  # What are the keys of the release role?
   release_role_keys = get_keys_for_top_level_role(RELEASE_ROLE_NAME)
+  version_number = get_version_number(RELEASE_ROLE_FILE)
 
   # Generate and write the signed release metadata.
   signerlib.build_release_file(release_role_keys, METADATA_DIRECTORY,
@@ -369,13 +395,8 @@ def update_release(time_delta):
 
 def update_timestamp(time_delta):
   expiration_date = get_expiration_date(time_delta)
-
-  # TODO: Increment version number on update by reading a verified copy of
-  # extant metadata.
-  version_number = 1
-
-  # What are the keys of the timestamp role?
   timestamp_role_keys = get_keys_for_top_level_role(TIMESTAMP_ROLE_NAME)
+  version_number = get_version_number(TIMESTAMP_ROLE_FILE)
 
   # Generate and write the signed timestamp metadata.
   signerlib.build_timestamp_file(timestamp_role_keys, METADATA_DIRECTORY,

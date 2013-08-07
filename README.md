@@ -19,7 +19,7 @@ mirror](https://github.com/dachshund/pip/wiki/PyPI-over-TUF).
         - make_release.py: Sign a new release.
         - make_timestamp.py: Sign a new timestamp.
 - check.py: A library to check metadata against data.
-- delegate.py: A library to delegate and update targets, release or timestamp.
+- delegate.py: A library to delegate and update release, targets or timestamp.
 - destroy.sh: Minimally destroy pypi.updateframework.com.
 - environment.sh: Shared environmental variables.
 
