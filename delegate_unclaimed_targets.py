@@ -6,6 +6,7 @@
 
 from __future__ import division
 
+import datetime
 import os.path
 
 from tuf.log import logger
@@ -29,7 +30,7 @@ PREFIX_LENGTH =  len(hex(NUMBER_OF_BINS-1)[2:])
 
 
 
-def make_delegation():
+def update_unclaimed_targets():
   # Get all possible targets.
   absolute_delegated_paths = signerlib.get_targets(delegate.TARGETS_DIRECTORY,
                                                    recursive_walk=True,
@@ -66,55 +67,58 @@ def make_delegation():
   # Delegate every target to the "unclaimed" targets role.
   # Presently, every target falls under the "simple/" and "packages/"
   # directories.
-  unclaimed_relative_delegated_paths = [
-    # FIXME: Presently, the TUF master branch does not recognize directories as
-    # valid delegated paths, so we will uncomment this once Vlad's metadata
-    # branch has been merged with master.
-    #"simple/", "packages/"
-  ]
-
-  # TODO: This needs to happen only once.
-  delegate.make_delegation(delegate.TARGETS_ROLE_NAME,
-                           delegate.UNCLAIMED_TARGETS_ROLE_NAME,
-                           unclaimed_relative_delegated_paths)
-
-  # Delegate from the "unclaimed" targets role to each bin.
+  unclaimed_relative_delegated_paths = ["simple/", "packages/"]
   # TODO: Comment on shared keys.
-
   unclaimed_targets_role_keys = \
     delegate.get_keys_for_targets_role(delegate.UNCLAIMED_TARGETS_ROLE_NAME)
+
+  # TODO: Update delegator only if necessary to do so.
+  delegate.make_delegation(delegate.TARGETS_ROLE_NAME,
+                           delegate.UNCLAIMED_TARGETS_ROLE_NAME,
+                           relative_delegated_paths=unclaimed_relative_delegated_paths)
+
+  # TODO: Update delegatee only if necessary to do so.
+  unclaimed_relative_target_paths = []
+  delegate.update_targets_metadata(delegate.UNCLAIMED_TARGETS_ROLE_NAME,
+                                   unclaimed_relative_target_paths,
+                                   unclaimed_targets_role_keys,
+                                   datetime.timedelta(days=365))
+
+  # Delegate from the "unclaimed" targets role to each bin.
 
   for bin_index in xrange(NUMBER_OF_BINS):
     # The bin index in hex padded from the left with zeroes for up to the
     # PREFIX_LENGTH.
-    bin_index_in_hex = hex(bin_index)[2:].zfill(PREFIX_LENGTH) 
+    bin_index_in_hex = hex(bin_index)[2:].zfill(PREFIX_LENGTH)
+
+    relative_binned_targets_role_name = bin_index_in_hex
+    absolute_binned_targets_role_name = \
+      os.path.join(delegate.UNCLAIMED_TARGETS_ROLE_NAME,
+                   relative_binned_targets_role_name)
+
     absolute_delegated_paths_in_this_bin = \
       absolute_delegated_paths_in_bin[bin_index]
     relative_delegated_paths_in_this_bin = \
       delegate.get_relative_delegated_paths(absolute_delegated_paths_in_this_bin)
-    relative_binned_targets_role_name = bin_index_in_hex
 
-    # Write and sign the delegatee metadata file.
-    # TODO: Update delegatee only if necessary to do so.
-    signercli._make_delegated_metadata(delegate.METADATA_DIRECTORY,
-                                       relative_delegated_paths_in_this_bin,
-                                       delegate.UNCLAIMED_TARGETS_ROLE_NAME,
+    # TODO: Update delegator only if necessary to do so.
+    delegate.update_delegator_metadata(delegate.UNCLAIMED_TARGETS_ROLE_NAME,
                                        relative_binned_targets_role_name,
-                                       unclaimed_targets_role_keys)
-
-    # Write and sign the delegator metadata file.
-    # TODO: This needs to happen only once.
-    signercli._update_parent_metadata(delegate.METADATA_DIRECTORY,
-                                      relative_binned_targets_role_name,
-                                      unclaimed_targets_role_keys,
-                                      relative_delegated_paths_in_this_bin,
-                                      delegate.UNCLAIMED_TARGETS_ROLE_NAME,
-                                      unclaimed_targets_role_keys,
-                                      path_hash_prefix=bin_index_in_hex)
+                                       unclaimed_targets_role_keys,
+                                       unclaimed_targets_role_keys,
+                                       path_hash_prefix=bin_index_in_hex)
 
     logger.info('Delegated from {0} to {1}'.format(
                 delegate.UNCLAIMED_TARGETS_ROLE_NAME,
-                relative_binned_targets_role_name))
+                absolute_binned_targets_role_name))
+
+    # TODO: Update delegatee only if necessary to do so.
+    delegate.update_targets_metadata(absolute_binned_targets_role_name,
+                                     relative_delegated_paths_in_this_bin,
+                                     unclaimed_targets_role_keys,
+                                     datetime.timedelta(days=1))
+
+    logger.info('Wrote {0}'.format(absolute_binned_targets_role_name))
 
 
   # Compute statistics and check sanity.
@@ -145,7 +149,7 @@ def make_delegation():
 
 
 if __name__ == '__main__':
-  make_delegation()
+  update_unclaimed_targets()
 
 
 

@@ -59,23 +59,33 @@ fi
 # First, promote some "recently-claimed" delegations to the "claimed" role.
 ./delegate_claimed_targets.py
 
-# Preliminaries: "targets" is the set of all files on PyPI; "packages" are sets
-# of targets; "projects" are sets of packages.
-# Next, promote some projects to the "recently-claimed" role.
-./delegate_recently_claimed_targets.py
-
-# Finally, delegate all targets by default to the "unclaimed" role.
-./delegate_unclaimed_targets.py
-
-
 if [ $? -eq 0 ]
 then
-  # Remove ancillary shell scripts.
-  rm check.py
-  rm delegate.py
-  rm delegate_claimed_targets.py
-  rm delegate_recently_claimed_targets.py
-  rm delegate_unclaimed_targets.py
+  # Preliminaries: "targets" is the set of all files on PyPI; "packages" are sets
+  # of targets; "projects" are sets of packages.
+  # Next, promote some projects to the "recently-claimed" role.
+  ./delegate_recently_claimed_targets.py
+
+  if [ $? -eq 0 ]
+    # Finally, delegate all targets by default to the "unclaimed" role.
+    ./delegate_unclaimed_targets.py
+  then
+      if [ $? -eq 0 ]
+      then
+        # Remove ancillary shell scripts.
+        rm check.py
+        rm delegate.py
+        rm delegate_claimed_targets.py
+        rm delegate_recently_claimed_targets.py
+        rm delegate_unclaimed_targets.py
+      else
+        echo "Could not delegate unclaimed targets!"; exit 1;
+      fi
+  else
+    echo "Could not delegate recently-claimed targets!"; exit 1;
+  fi
 else
-  echo "Could not setup delegated target roles!"; exit 1;
+  echo "Could not delegate claimed targets!"; exit 1;
 fi
+
+

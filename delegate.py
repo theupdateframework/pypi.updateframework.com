@@ -10,8 +10,12 @@ environment on pypi.updateframework.com."""
 
 
 import datetime
-import os.path
+import os
+import time
 
+from tuf.log import logger
+
+import tuf.formats as formats
 import tuf.repo.keystore as keystore
 import tuf.repo.signercli as signercli
 import tuf.repo.signerlib as signerlib
@@ -161,26 +165,18 @@ def get_relative_delegated_paths(absolute_delegated_paths):
 
 
 
-# TODO: Do not update the delegator if relative_delegated paths have already
-# been delegated to delegatee.
 def make_delegation(delegator_targets_role_name, delegatee_targets_role_name,
-                    relative_delegated_paths, path_hash_prefix=None):
-  """Write and sign the delegation of a list of relative target file paths
-  (relative_delegated_paths) from the full name of the delegator
-  (delegator_targets_role_name) to the full name of the delegatee
-  (delegatee_targets_role_name). If a path hash prefix (path_hash_prefix) is
-  specified for the delegator, then we write it instead of
-  relative_delegated_paths for the delegator."""
+                    relative_delegated_paths=None,
+                    path_hash_prefix=None):
 
   # The name of the delegatee contain the name of its delegator as a prefix.
   assert \
     delegatee_targets_role_name.startswith(delegator_targets_role_name+'/')
 
-  # We need to extract the relative name of the full delegatee targets role
-  # name. For example, if the delegator is 'targets/a' and its delegatee is
-  # 'targets/a/b', then the relative name of the delegatee is 'b'.
-  relative_delegatee_targets_role_name = \
-    delegatee_targets_role_name[len(delegator_targets_role_name)+1:]
+  # relative_delegated_paths XOR path_hash_prefix
+  assert (relative_delegated_paths is None and path_hash_prefix is not None) \
+          or \
+         (relative_delegated_paths is not None and path_hash_prefix is None)
 
   # Load targets roles keys into memory, and get their key IDs.
   delegator_targets_role_keys = \
@@ -188,23 +184,19 @@ def make_delegation(delegator_targets_role_name, delegatee_targets_role_name,
   delegatee_targets_role_keys = \
     get_keys_for_targets_role(delegatee_targets_role_name)
 
-  # Write and sign the delegatee metadata file.
-  # TODO: Update delegatee only if necessary to do so.
-  signercli._make_delegated_metadata(METADATA_DIRECTORY,
-                                     relative_delegated_paths,
-                                     delegator_targets_role_name,
-                                     relative_delegatee_targets_role_name,
-                                     delegatee_targets_role_keys)
+  # We need to extract the relative name of the full delegatee targets role
+  # name. For example, if the delegator is 'targets/a' and its delegatee is
+  # 'targets/a/b', then the relative name of the delegatee is 'b'.
+  relative_delegatee_targets_role_name = \
+    delegatee_targets_role_name[len(delegator_targets_role_name)+1:]
 
-  # Write and sign the delegator metadata file.
-  # TODO: Update delegator only if necessary to do so.
-  signercli._update_parent_metadata(METADATA_DIRECTORY,
-                                    relative_delegatee_targets_role_name,
-                                    delegatee_targets_role_keys,
-                                    relative_delegated_paths,
-                                    delegator_targets_role_name,
-                                    delegator_targets_role_keys,
-                                    path_hash_prefix=path_hash_prefix)
+  # Update the delegator metadata file.
+  update_delegator_metadata(delegator_targets_role_name,
+                            relative_delegatee_targets_role_name,
+                            delegator_targets_role_keys,
+                            delegatee_targets_role_keys,
+                            relative_delegated_paths=relative_delegated_paths,
+                            path_hash_prefix=path_hash_prefix)
 
 
 
@@ -235,6 +227,85 @@ def need_delegation(targets_role_name, files_directory, recursive_walk=True,
     matched = False
 
   return not matched
+
+
+
+
+
+# TODO: Update delegator only if necessary to do so.
+def update_delegator_metadata(delegator_targets_role_name,
+                              relative_delegatee_targets_role_name,
+                              delegator_targets_role_keys,
+                              delegatee_targets_role_keys,
+                              relative_delegated_paths=None,
+                              path_hash_prefix=None):
+
+  # relative_delegated_paths XOR path_hash_prefix
+  assert (relative_delegated_paths is None and path_hash_prefix is not None) \
+          or \
+         (relative_delegated_paths is not None and path_hash_prefix is None)
+
+  signercli._update_parent_metadata(METADATA_DIRECTORY,
+                            relative_delegatee_targets_role_name,
+                            delegatee_targets_role_keys,
+                            delegator_targets_role_name,
+                            delegator_targets_role_keys,
+                            delegated_paths=relative_delegated_paths,
+                            path_hash_prefix=path_hash_prefix)
+
+
+
+
+
+# TODO: Update delegatee only if necessary to do so.
+def update_targets_metadata(targets_role_name, relative_delegated_paths,
+                            targets_role_keys, time_delta):
+
+  # TODO: Ensure that targets_role_name is of the correct form.
+  assert targets_role_name == 'targets' or \
+         targets_role_name.startswith('targets/')
+
+  # The first time a parent role creates a delegation, a directory
+  # containing the parent role's name is created in the metadata
+  # directory.  For example, if the targets roles creates a delegated
+  # role 'role1', the metadata directory would then contain:
+  # '{METADATA_DIRECTORY}/targets/role1.txt', where 'role1.txt' is the
+  # delegated role's metadata file.
+  # If delegated role 'role1' creates its own delegated role 'role2', the
+  # metadata directory would then contain:
+  # '{METADATA_DIRECTORY}/targets/role1/role2.txt'.
+  # When creating a delegated role, if the parent directory already
+  # exists, this means a prior delegation has been perform by the parent.
+
+  parent_role_name = os.path.dirname(targets_role_name)
+  child_role_name = os.path.basename(targets_role_name)
+
+  parent_role_directory = os.path.join(METADATA_DIRECTORY, parent_role_name)
+  if not os.path.isdir(parent_role_directory):
+    os.mkdir(parent_role_directory)
+
+  # Set the filename of the targets role metadata.
+  targets_role_filename = child_role_name+'.txt'
+  targets_role_filename = os.path.join(parent_role_directory,
+                                       targets_role_filename)
+
+  # TODO: Increment version number on update by reading a verified copy of
+  # extant metadata.
+  version_number = 1
+  # TODO: Adjust for UTC.
+  # http://stackoverflow.com/a/2775982
+  future_date = datetime.datetime.now() + time_delta
+  expiration_date = formats.format_time(time.mktime(future_date.timetuple()))
+
+  # Prepare the targets metadata.
+  targets_metadata = \
+    signerlib.generate_targets_metadata(REPOSITORY_DIRECTORY,
+                                        relative_delegated_paths,
+                                        version_number, expiration_date)
+
+  # Sign and write the targets role metadata.
+  signercli._sign_and_write_metadata(targets_metadata, targets_role_keys,
+                                     targets_role_filename)
 
 
 

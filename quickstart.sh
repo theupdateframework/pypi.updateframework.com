@@ -12,9 +12,9 @@ set timeout -1
 
 
 spawn quickstart.py --project=$project
-expect "When would you like your certificates to expire? (mm/dd/yyyy):"
+expect "When would you like your \"root.txt\" metadata to expire? (mm/dd/yyyy):"
 # TODO: Compute a year from now().
-send "01/01/2014\r"
+send "08/31/2014\r"
 
 
 expect "Enter the desired threshold for the role 'root':"
