@@ -28,29 +28,39 @@ import check
 
 ########################### GLOBAL VARIABLES ##################################
 
+# TODO: Need to review:
+# http://csrc.nist.gov/publications/nistpubs/800-131A/sp800-131A.pdf
 KEY_SIZE=2048
 
-TARGETS_ROLE_NAME = "targets"
-CLAIMED_TARGETS_ROLE_NAME = "targets/claimed"
-RECENTLY_CLAIMED_TARGETS_ROLE_NAME = "targets/recently-claimed"
-UNCLAIMED_TARGETS_ROLE_NAME = "targets/unclaimed"
+RELEASE_ROLE_NAME = 'release'
+TARGETS_ROLE_NAME = 'targets'
+TIMESTAMP_ROLE_NAME = 'timestamp'
+
+CLAIMED_TARGETS_ROLE_NAME = '{0}/claimed'.format(TARGETS_ROLE_NAME)
+RECENTLY_CLAIMED_TARGETS_ROLE_NAME = \
+  '{0}/recently-claimed'.format(TARGETS_ROLE_NAME)
+UNCLAIMED_TARGETS_ROLE_NAME = '{0}/unclaimed'.format(TARGETS_ROLE_NAME)
 
 # Map full role names (str) to list of passwords ([str, ..., str]).
 # Storing passwords in the clear is generally a bad idea. It is acceptable for
 # development (but certainly not production).
 ROLE_NAME_TO_PASSWORDS = {
+  RELEASE_ROLE_NAME: ['release'],
   TARGETS_ROLE_NAME: ['targets'],
+  TIMESTAMP_ROLE_NAME: ['timestamp'],
   CLAIMED_TARGETS_ROLE_NAME: ['claimed'],
   RECENTLY_CLAIMED_TARGETS_ROLE_NAME: ['recently-claimed'],
   UNCLAIMED_TARGETS_ROLE_NAME: ['unclaimed']
 }
 
-KEYSTORE_DIRECTORY = os.path.abspath("keystore")
-REPOSITORY_DIRECTORY = os.path.abspath("repository")
+KEYSTORE_DIRECTORY = os.path.abspath('keystore')
+REPOSITORY_DIRECTORY = os.path.abspath('repository')
+# Assume that config is in /path/to/repository/config.cfg
+CONFIGURATION_FILE = os.path.join(REPOSITORY_DIRECTORY, 'config.cfg')
 # Assume that metadata is in /path/to/repository/metadata
-METADATA_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, "metadata")
+METADATA_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, 'metadata')
 # Assume that metadata is in /path/to/repository/targets
-TARGETS_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, "targets")
+TARGETS_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, 'targets')
 
 
 
@@ -110,6 +120,17 @@ def get_absolute_delegated_paths(files_directory, recursive_walk=True,
 
 
 
+def get_expiration_date(time_delta):
+  # TODO: Adjust for UTC.
+  # http://stackoverflow.com/a/2775982
+  future_date = datetime.datetime.now() + time_delta
+  expiration_date = formats.format_time(time.mktime(future_date.timetuple()))
+  return expiration_date
+
+
+
+
+
 def get_keys_for_targets_role(targets_role_name):
   """Given the name of a targets role (targets_role_name) and its list of
   passwords (targets_role_passwords), return the RSA key IDs for a targets role.
@@ -144,6 +165,25 @@ def get_keys_for_targets_role(targets_role_name):
 
   return targets_role_keys
 
+
+
+
+
+def get_keys_for_top_level_role(top_level_role_name):
+  # What are the keys of the top-level role?
+  configuration = signerlib.read_config_file(CONFIGURATION_FILE)
+  top_level_role_configuration = configuration[top_level_role_name]
+  top_level_role_keys = top_level_role_configuration['keyids']
+  top_level_role_passwords = ROLE_NAME_TO_PASSWORDS[top_level_role_name]
+
+  # Decrypt and load the keys of the timestamp role.
+  loaded_top_level_role_keys = \
+    keystore.load_keystore_from_keyfiles(KEYSTORE_DIRECTORY,
+                                         top_level_role_keys,
+                                         top_level_role_passwords)
+  assert top_level_role_keys == loaded_top_level_role_keys
+
+  return top_level_role_keys
 
 
 
@@ -289,13 +329,11 @@ def update_targets_metadata(targets_role_name, relative_delegated_paths,
   targets_role_filename = os.path.join(parent_role_directory,
                                        targets_role_filename)
 
+  expiration_date = get_expiration_date(time_delta)
+
   # TODO: Increment version number on update by reading a verified copy of
   # extant metadata.
   version_number = 1
-  # TODO: Adjust for UTC.
-  # http://stackoverflow.com/a/2775982
-  future_date = datetime.datetime.now() + time_delta
-  expiration_date = formats.format_time(time.mktime(future_date.timetuple()))
 
   # Prepare the targets metadata.
   targets_metadata = \
@@ -306,6 +344,42 @@ def update_targets_metadata(targets_role_name, relative_delegated_paths,
   # Sign and write the targets role metadata.
   signercli._sign_and_write_metadata(targets_metadata, targets_role_keys,
                                      targets_role_filename)
+
+
+
+
+
+def update_release(time_delta):
+  expiration_date = get_expiration_date(time_delta)
+
+  # TODO: Increment version number on update by reading a verified copy of
+  # extant metadata.
+  version_number = 1
+
+  # What are the keys of the release role?
+  release_role_keys = get_keys_for_top_level_role(RELEASE_ROLE_NAME)
+
+  # Generate and write the signed release metadata.
+  signerlib.build_release_file(release_role_keys, METADATA_DIRECTORY,
+                               version_number, expiration_date)
+
+
+
+
+
+def update_timestamp(time_delta):
+  expiration_date = get_expiration_date(time_delta)
+
+  # TODO: Increment version number on update by reading a verified copy of
+  # extant metadata.
+  version_number = 1
+
+  # What are the keys of the timestamp role?
+  timestamp_role_keys = get_keys_for_top_level_role(TIMESTAMP_ROLE_NAME)
+
+  # Generate and write the signed timestamp metadata.
+  signerlib.build_timestamp_file(timestamp_role_keys, METADATA_DIRECTORY,
+                               version_number, expiration_date)
 
 
 

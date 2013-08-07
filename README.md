@@ -8,12 +8,19 @@ mirror](https://github.com/dachshund/pip/wiki/PyPI-over-TUF).
         - quickstart.sh: Drive quickstart.py.
     - setup2.sh: Sync with PyPI.
     + setup3.sh: Create or update delegated target roles, or their delegations.
-        - check.py: Check metadata against data.
-        - delegate.py: A library to delegate targets.
+        - delegate_claimed_targets.py: Promote projects from the
+        "recently-claimed" targets role to the "claimed" targets role.
+        - delegate_recently_claimed_targets.py: Promote targets as projects
+        from the "unclaimed" targets role to the "recently-claimed" targets
+        role.
+        - delegate_unclaimed_targets.py: Delegate all targets by default to the
+        "unclaimed" targets role.
     + setup4.sh: Make a new release and timestamp.
-        - make-release.sh: Drive signercli.py --makerelease.
-        - make-timestamp.sh: Drive signercli.py --maketimestamp.
-- destroy.sh: Destroy pypi.updateframework.com.
+        - make_release.py: Sign a new release.
+        - make_timestamp.py: Sign a new timestamp.
+- check.py: A library to check metadata against data.
+- delegate.py: A library to delegate and update targets, release or timestamp.
+- destroy.sh: Minimally destroy pypi.updateframework.com.
 - environment.sh: Shared environmental variables.
 
 ## Workflow

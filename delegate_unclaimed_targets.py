@@ -116,7 +116,7 @@ def update_unclaimed_targets():
     delegate.update_targets_metadata(absolute_binned_targets_role_name,
                                      relative_delegated_paths_in_this_bin,
                                      unclaimed_targets_role_keys,
-                                     datetime.timedelta(days=1))
+                                     datetime.timedelta(days=3))
 
     logger.info('Wrote {0}'.format(absolute_binned_targets_role_name))
 

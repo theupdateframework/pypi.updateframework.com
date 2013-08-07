@@ -15,4 +15,6 @@ PACKAGE_EXTENSION=tar.gz
 VIRTUAL_ENVIRONMENT=virtual_python
 
 
-TUF_TARBALL=https://github.com/theupdateframework/tuf/archive/master.zip
+TUF_TARBALL=https://github.com/theupdateframework/tuf/archive/path_hash_prefix.zip
+
+

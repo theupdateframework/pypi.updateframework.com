@@ -1,20 +1,12 @@
 #!/bin/bash
 
 
-# NOTES:
-# - See the quotation marks around certain variables? They are very important
-# for correctly passing quoted Python package names containing spaces.
-
-
 # Load shared environment variables.
 source environment.sh
 
 
 # Our own global variables.
-KEY_SIZE=2048
-KEYSTORE_DIRECTORY=keystore
 REPOSITORY_DIRECTORY=repository
-REPOSITORY_METADATA_DIRECTORY=$REPOSITORY_DIRECTORY/metadata
 REPOSITORY_TARGETS_DIRECTORY=$REPOSITORY_DIRECTORY/targets
 
 

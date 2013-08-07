@@ -5,13 +5,6 @@
 source environment.sh
 
 
-# Our own global variables.
-KEYSTORE_DIRECTORY=keystore
-REPOSITORY_DIRECTORY=repository
-REPOSITORY_CONFIGURATION_FILE=$REPOSITORY_DIRECTORY/config.cfg
-REPOSITORY_METADATA_DIRECTORY=$REPOSITORY_DIRECTORY/metadata
-
-
 # Activate virtual environment.
 if [ ! -d $BASE_DIRECTORY/$VIRTUALENV_PACKAGE ]
 then
@@ -27,23 +20,33 @@ then
   echo "Please run setup1.sh first!"; exit 1;
 else
   # Copy some scripts to the quickstart directory.
-  cp make-release.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
-  cp make-timestamp.sh $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
+  cp check.py $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
+  cp delegate.py $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
+  cp make_release.py $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
+  cp make_timestamp.py $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
   cd $BASE_DIRECTORY/$QUICKSTART_DIRECTORY
 fi
 
 
-# FIXME: We are burdened to know the password from the previous step.
-./make-release.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY $REPOSITORY_CONFIGURATION_FILE "release"
+# Update release.
+./make_release.py
+
 if [ $? -eq 0 ]
 then
-  ./make-timestamp.sh $KEYSTORE_DIRECTORY $REPOSITORY_METADATA_DIRECTORY $REPOSITORY_CONFIGURATION_FILE "timestamp"
+  # Update timestamp.
+  ./make_timestamp.py
   if [ $? -eq 0 ]
   then
-    rm make-release.sh make-timestamp.sh
+    # Remove ancillary shell scripts.
+    rm check.py
+    rm delegate.py
+    rm make_release.py
+    rm make_timestamp.py
   else
     echo "Could not make a new timestamp!"; exit 1;
   fi
 else
   echo "Could not make a new release!"; exit 1;
 fi
+
+
