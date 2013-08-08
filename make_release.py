@@ -14,7 +14,7 @@ import delegate
 
 def update_release():
   # TODO: What is a good release expiration time?
-  time_delta = datetime.timedelta(days=3)
+  time_delta = datetime.timedelta(days=7)
   delegate.update_release(time_delta)
 
 

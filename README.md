@@ -67,10 +67,13 @@ By default (unless you modify the environment variables in `environment.sh`),
             keep in the same place; some of them should be offline, while
             others should be online.
         + `~/pypi.updateframework.com/quickstart/repository`
-            - TUF metadata for PyPI that you would publicly serve.
+            - TUF repository (metadata+data) for PyPI that you would publicly
+            serve.
     - `~/pypi.updateframework.com/virtualenv-XYZ`
     - `~/pypi.updateframework.com/virtualenv-XYZ.tar.gz`
-    - `~/pypi.updateframework.com/virtual_python`
+    + `~/pypi.updateframework.com/virtual_python`
+      - A [virtualenv](http://www.virtualenv.org/) for
+      pypi.updateframework.com.
 
 ## Notes
 

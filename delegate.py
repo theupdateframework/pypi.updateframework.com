@@ -10,7 +10,6 @@ environment on pypi.updateframework.com."""
 
 
 import datetime
-import json
 import os
 import time
 
@@ -84,6 +83,87 @@ def check_sanity():
   assert os.path.isdir(METADATA_DIRECTORY)
   assert TARGETS_DIRECTORY.startswith(REPOSITORY_DIRECTORY)
   assert os.path.isdir(TARGETS_DIRECTORY)
+
+
+
+
+
+# TODO: Update delegator if the relevant keys have changed.
+# TODO: Ugly function which needs refactoring.
+def delegator_needs_update(delegator_targets_role_name,
+                           relative_delegatee_targets_role_name,
+                           relative_delegated_paths,
+                           path_hash_prefix):
+  # By default, we will assume that the delegator needs no update.
+  needs_update = False
+
+  # Extract metadata from the delegator targets role.
+  delegator_filename = \
+    os.path.join(METADATA_DIRECTORY,
+                 '{0}.txt'.format(delegator_targets_role_name))
+  delegator_metadata_dict = \
+    signerlib.read_metadata_file(delegator_filename)
+  # TODO: Verify signature on delegator metadata!
+  delegator_signed_metadata = delegator_metadata_dict['signed']
+
+  # Find the delegatee, if it exists, in the delegator.
+  delegations = delegator_signed_metadata.get('delegations', {})
+  roles = delegations.get('roles', [])
+  absolute_delegatee_targets_role_name = \
+    '{0}/{1}'.format(delegator_targets_role_name,
+                     relative_delegatee_targets_role_name)
+  role_index = \
+    signerlib.find_delegated_role(roles, absolute_delegatee_targets_role_name)
+
+  if role_index is None:
+    needs_update = True
+    logger.info('{0} does not know about {1}'.format(
+                delegator_targets_role_name,
+                relative_delegatee_targets_role_name))
+  else:
+    role = roles[role_index]
+    role_paths = role.get('paths')
+    role_path_hash_prefix = role.get('path_hash_prefix')
+
+    # relative_delegated_paths are relative to 'repository'.
+    # relative_role_paths are relative to 'repository/targets'.
+    # This is because role_paths are relative to 'repository/targets'.
+    relative_role_paths = []
+    for relative_delegated_path in relative_delegated_paths:
+      assert relative_delegated_path.startswith('targets/')
+      relative_role_paths.append(relative_delegated_path[8:])
+
+    # Check role paths.
+    if role_paths is not None:
+      if relative_delegated_paths is not None:
+        if set(role_paths) == set(relative_role_paths):
+          logger.debug('Role paths are the same.')
+        else:
+          needs_update = True
+          logger.info('Role paths have changed!')
+      else:
+        assert path_hash_prefix is not None
+        needs_update = True
+        logger.info('Role paths have been substituted with path_hash_prefix!')
+
+    # Otherwise, check role path_hash_prefix.
+    elif role_path_hash_prefix is not None:
+      if path_hash_prefix is not None:
+        if role_path_hash_prefix == path_hash_prefix:
+          logger.debug('Role path_hash_prefix is the same.')
+        else:
+          needs_update = True
+          logger.debug('Role path_hash_prefix has changed!')
+      else:
+        assert relative_delegated_paths is not None
+        needs_update = True
+        logger.info('Role path_hash_prefix has been substituted with paths!')
+
+    # If both paths and path_hash_prefix are missing, then something is wrong.
+    else:
+      raise tuf.RepositoryError('Missing both paths and path_hash_prefix!')
+
+  return needs_update
 
 
 
@@ -219,15 +299,14 @@ def get_version_number(metadata_filename):
   version_number = None
 
   if os.path.isfile(metadata_filename):
-    with open(metadata_filename) as metadata_file:
-      metadata_dict = json.load(metadata_file)
-      signed_metadata = metadata_dict['signed']
-      version_number = signed_metadata['version']
-      logger.info('Previous version for {0}: {1}'.format(metadata_filename,
-                  version_number))
-      version_number += 1
-      logger.info('Current version for {0}: {1}'.format(metadata_filename,
-                  version_number))
+    metadata_dict = signerlib.read_metadata_file(metadata_filename)
+    signed_metadata = metadata_dict['signed']
+    version_number = signed_metadata['version']
+    logger.info('Previous version for {0}: {1}'.format(metadata_filename,
+                version_number))
+    version_number += 1
+    logger.info('Current version for {0}: {1}'.format(metadata_filename,
+                version_number))
   else:
     logger.warn('{0} does not exist! Assuming first version...'.format(
                 metadata_filename))
@@ -306,7 +385,6 @@ def need_delegation(targets_role_name, files_directory, recursive_walk=True,
 
 
 
-# TODO: Update delegator only if necessary to do so.
 def update_delegator_metadata(delegator_targets_role_name,
                               relative_delegatee_targets_role_name,
                               delegator_targets_role_keys,
@@ -319,13 +397,21 @@ def update_delegator_metadata(delegator_targets_role_name,
           or \
          (relative_delegated_paths is not None and path_hash_prefix is None)
 
-  signercli._update_parent_metadata(METADATA_DIRECTORY,
+  if delegator_needs_update(delegator_targets_role_name,
                             relative_delegatee_targets_role_name,
-                            delegatee_targets_role_keys,
-                            delegator_targets_role_name,
-                            delegator_targets_role_keys,
-                            delegated_paths=relative_delegated_paths,
-                            path_hash_prefix=path_hash_prefix)
+                            relative_delegated_paths,
+                            path_hash_prefix):
+    signercli._update_parent_metadata(METADATA_DIRECTORY,
+                              relative_delegatee_targets_role_name,
+                              delegatee_targets_role_keys,
+                              delegator_targets_role_name,
+                              delegator_targets_role_keys,
+                              delegated_paths=relative_delegated_paths,
+                              path_hash_prefix=path_hash_prefix)
+  else:
+    logger.warn('{0} does not need to be updated about {1}'.format(
+                delegator_targets_role_name,
+                relative_delegatee_targets_role_name))
 
 
 

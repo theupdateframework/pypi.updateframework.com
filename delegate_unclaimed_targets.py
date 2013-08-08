@@ -67,7 +67,7 @@ def update_unclaimed_targets():
   # Delegate every target to the "unclaimed" targets role.
   # Presently, every target falls under the "simple/" and "packages/"
   # directories.
-  unclaimed_relative_delegated_paths = ["simple/", "packages/"]
+  unclaimed_relative_delegated_paths = ["targets/simple/", "targets/packages/"]
   # TODO: Comment on shared keys.
   unclaimed_targets_role_keys = \
     delegate.get_keys_for_targets_role(delegate.UNCLAIMED_TARGETS_ROLE_NAME)
