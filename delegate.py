@@ -10,7 +10,9 @@ environment on pypi.updateframework.com."""
 
 
 import datetime
+import gzip
 import os
+import shutil
 import time
 
 from tuf.log import logger
@@ -146,6 +148,20 @@ def check_sanity():
   assert os.path.isdir(METADATA_DIRECTORY)
   assert TARGETS_DIRECTORY.startswith(REPOSITORY_DIRECTORY)
   assert os.path.isdir(TARGETS_DIRECTORY)
+
+
+
+
+
+def compress_metadata(metadata_filename):
+  compressed_metadata_filename = '{0}.gz'.format(metadata_filename)
+
+  with open(metadata_filename) as metadata_file, \
+       gzip.open(compressed_metadata_filename, 'w') as compressed_metadata_file:
+    shutil.copyfileobj(metadata_file, compressed_metadata_file)
+
+  logger.info('Compressed {0} as {1}'.format(metadata_filename,
+              compressed_metadata_filename))
 
 
 
@@ -441,7 +457,7 @@ def update_delegator_metadata(delegator_targets_role_name,
                               delegated_paths=relative_delegated_paths,
                               path_hash_prefix=path_hash_prefix)
   else:
-    logger.warn('{0} does not need to be updated about {1}'.format(
+    logger.info('{0} does not need to be updated about {1}'.format(
                 delegator_targets_role_name,
                 relative_delegatee_targets_role_name))
 

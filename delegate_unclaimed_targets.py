@@ -120,6 +120,11 @@ def update_unclaimed_targets():
 
     logger.info('Wrote {0}'.format(absolute_binned_targets_role_name))
 
+  # Compress "unclaimed" targets role metadata.
+  unclaimed_targets_role_filename = \
+    os.path.join(delegate.METADATA_DIRECTORY,
+                 '{0}.txt'.format(delegate.UNCLAIMED_TARGETS_ROLE_NAME))
+  delegate.compress_metadata(unclaimed_targets_role_filename)
 
   # Compute statistics and check sanity.
 
