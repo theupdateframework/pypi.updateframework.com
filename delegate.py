@@ -350,30 +350,6 @@ def get_relative_delegated_paths(absolute_delegated_paths):
 
 
 
-# TODO: Verify signature on metadata!
-def get_version_number(metadata_filename):
-  version_number = None
-
-  if os.path.isfile(metadata_filename):
-    metadata_dict = signerlib.read_metadata_file(metadata_filename)
-    signed_metadata = metadata_dict['signed']
-    version_number = signed_metadata['version']
-    logger.info('Previous version for {0}: {1}'.format(metadata_filename,
-                version_number))
-    version_number += 1
-    logger.info('Current version for {0}: {1}'.format(metadata_filename,
-                version_number))
-  else:
-    logger.warn('{0} does not exist! Assuming first version...'.format(
-                metadata_filename))
-    version_number = 1
-
-  return version_number
-
-
-
-
-
 def make_delegation(delegator_targets_role_name, delegatee_targets_role_name,
                     relative_delegated_paths=None,
                     path_hash_prefix=None):
@@ -506,7 +482,7 @@ def update_targets_metadata(targets_role_name, relative_delegated_paths,
                                        targets_role_filename)
 
   expiration_date = get_expiration_date(time_delta)
-  version_number = get_version_number(targets_role_filename)
+  version_number = signercli._get_metadata_version(targets_role_filename)
 
   # Prepare the targets metadata.
   targets_metadata = \
@@ -522,27 +498,32 @@ def update_targets_metadata(targets_role_name, relative_delegated_paths,
 
 
 
-def update_release(time_delta):
+def update_release(time_delta, compress=False):
   expiration_date = get_expiration_date(time_delta)
   release_role_keys = get_keys_for_top_level_role(RELEASE_ROLE_NAME)
-  version_number = get_version_number(RELEASE_ROLE_FILE)
+  version_number = signercli._get_metadata_version(RELEASE_ROLE_FILE)
 
   # Generate and write the signed release metadata.
-  signerlib.build_release_file(release_role_keys, METADATA_DIRECTORY,
-                               version_number, expiration_date)
+  release_role_filename = \
+    signerlib.build_release_file(release_role_keys, METADATA_DIRECTORY,
+                                 version_number, expiration_date,
+                                 compress=compress)
+
+  logger.info('Release written to {0}'.format(release_role_filename))
 
 
 
 
 
-def update_timestamp(time_delta):
+def update_timestamp(time_delta, include_compressed_release=True):
   expiration_date = get_expiration_date(time_delta)
   timestamp_role_keys = get_keys_for_top_level_role(TIMESTAMP_ROLE_NAME)
-  version_number = get_version_number(TIMESTAMP_ROLE_FILE)
+  version_number = signercli._get_metadata_version(TIMESTAMP_ROLE_FILE)
 
   # Generate and write the signed timestamp metadata.
   signerlib.build_timestamp_file(timestamp_role_keys, METADATA_DIRECTORY,
-                               version_number, expiration_date)
+                                 version_number, expiration_date,
+                                 include_compressed_release=include_compressed_release)
 
 
 
