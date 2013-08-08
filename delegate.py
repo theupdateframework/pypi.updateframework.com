@@ -74,6 +74,69 @@ TIMESTAMP_ROLE_FILE = os.path.join(METADATA_DIRECTORY,
 
 
 
+def _role_path_hash_prefix_needs_update(role,
+                                        relative_delegated_paths,
+                                        path_hash_prefix):
+
+  # By default, we will assume that the delegator needs no update.
+  needs_update = False
+  role_path_hash_prefix = role.get('path_hash_prefix')
+
+  # Otherwise, check role path_hash_prefix.
+  if role_path_hash_prefix is None:
+    logger.warn('No role path_hash_prefix!')
+  else:
+    if path_hash_prefix is not None:
+      if role_path_hash_prefix == path_hash_prefix:
+        logger.debug('Role path_hash_prefix is the same.')
+      else:
+        needs_update = True
+        logger.debug('Role path_hash_prefix has changed!')
+    else:
+      assert relative_delegated_paths is not None
+      needs_update = True
+      logger.info('Role path_hash_prefix has been substituted with paths!')
+
+  return needs_update
+
+
+
+
+
+def _role_paths_needs_update(role, relative_delegated_paths, path_hash_prefix):
+
+  # By default, we will assume that the delegator needs no update.
+  needs_update = False
+  role_paths = role.get('paths')
+
+  # relative_delegated_paths are relative to 'repository'.
+  # relative_role_paths are relative to 'repository/targets'.
+  # This is because role_paths are relative to 'repository/targets'.
+  relative_role_paths = []
+  for relative_delegated_path in relative_delegated_paths:
+    assert relative_delegated_path.startswith('targets/')
+    relative_role_paths.append(relative_delegated_path[8:])
+
+  # Check role paths.
+  if role_paths is None:
+    logger.warn('No role paths!')
+  else:
+    if relative_delegated_paths is not None:
+      if set(role_paths) == set(relative_role_paths):
+        logger.debug('Role paths are the same.')
+      else:
+        needs_update = True
+        logger.info('Role paths have changed!')
+    else:
+      assert path_hash_prefix is not None
+      needs_update = True
+      logger.info('Role paths have been substituted with path_hash_prefix!')
+
+  return needs_update
+
+
+
+
 def check_sanity():
   """Check that we correctly set some parameters."""
 
@@ -89,79 +152,36 @@ def check_sanity():
 
 
 # TODO: Update delegator if the relevant keys have changed.
-# TODO: Ugly function which needs refactoring.
 def delegator_needs_update(delegator_targets_role_name,
                            relative_delegatee_targets_role_name,
-                           relative_delegated_paths,
-                           path_hash_prefix):
+                           relative_delegated_paths=None,
+                           path_hash_prefix=None):
+
+  # relative_delegated_paths XOR path_hash_prefix
+  assert (relative_delegated_paths is None and path_hash_prefix is not None) \
+          or \
+         (relative_delegated_paths is not None and path_hash_prefix is None)
+
   # By default, we will assume that the delegator needs no update.
   needs_update = False
+  role = \
+    get_delegatee_role_from_delegator(delegator_targets_role_name,
+                                      relative_delegatee_targets_role_name)
 
-  # Extract metadata from the delegator targets role.
-  delegator_filename = \
-    os.path.join(METADATA_DIRECTORY,
-                 '{0}.txt'.format(delegator_targets_role_name))
-  delegator_metadata_dict = \
-    signerlib.read_metadata_file(delegator_filename)
-  # TODO: Verify signature on delegator metadata!
-  delegator_signed_metadata = delegator_metadata_dict['signed']
-
-  # Find the delegatee, if it exists, in the delegator.
-  delegations = delegator_signed_metadata.get('delegations', {})
-  roles = delegations.get('roles', [])
-  absolute_delegatee_targets_role_name = \
-    '{0}/{1}'.format(delegator_targets_role_name,
-                     relative_delegatee_targets_role_name)
-  role_index = \
-    signerlib.find_delegated_role(roles, absolute_delegatee_targets_role_name)
-
-  if role_index is None:
+  if role is None:
     needs_update = True
-    logger.info('{0} does not know about {1}'.format(
-                delegator_targets_role_name,
-                relative_delegatee_targets_role_name))
+    logger.info('Role needs to be added.')
   else:
-    role = roles[role_index]
-    role_paths = role.get('paths')
-    role_path_hash_prefix = role.get('path_hash_prefix')
-
-    # relative_delegated_paths are relative to 'repository'.
-    # relative_role_paths are relative to 'repository/targets'.
-    # This is because role_paths are relative to 'repository/targets'.
-    relative_role_paths = []
-    for relative_delegated_path in relative_delegated_paths:
-      assert relative_delegated_path.startswith('targets/')
-      relative_role_paths.append(relative_delegated_path[8:])
-
-    # Check role paths.
-    if role_paths is not None:
-      if relative_delegated_paths is not None:
-        if set(role_paths) == set(relative_role_paths):
-          logger.debug('Role paths are the same.')
-        else:
-          needs_update = True
-          logger.info('Role paths have changed!')
-      else:
-        assert path_hash_prefix is not None
-        needs_update = True
-        logger.info('Role paths have been substituted with path_hash_prefix!')
-
-    # Otherwise, check role path_hash_prefix.
-    elif role_path_hash_prefix is not None:
-      if path_hash_prefix is not None:
-        if role_path_hash_prefix == path_hash_prefix:
-          logger.debug('Role path_hash_prefix is the same.')
-        else:
-          needs_update = True
-          logger.debug('Role path_hash_prefix has changed!')
-      else:
-        assert relative_delegated_paths is not None
-        needs_update = True
-        logger.info('Role path_hash_prefix has been substituted with paths!')
-
-    # If both paths and path_hash_prefix are missing, then something is wrong.
+    if _role_paths_needs_update(role, relative_delegated_paths,
+                                path_hash_prefix):
+      needs_update = True
+      logger.info('Role needs update.')
+    elif _role_path_hash_prefix_needs_update(role, relative_delegated_paths,
+                                             path_hash_prefix):
+      needs_update = True
+      logger.info('Role needs update.')
     else:
-      raise tuf.RepositoryError('Missing both paths and path_hash_prefix!')
+      logger.info('Role does not need update.')
 
   return needs_update
 
@@ -204,6 +224,42 @@ def get_absolute_delegated_paths(files_directory, recursive_walk=True,
                           file_predicate=file_predicate)
 
   return absolute_delegated_paths
+
+
+
+
+
+def get_delegatee_role_from_delegator(delegator_targets_role_name,
+                                      relative_delegatee_targets_role_name):
+
+  # Extract metadata from the delegator targets role.
+  delegator_filename = \
+    os.path.join(METADATA_DIRECTORY,
+                 '{0}.txt'.format(delegator_targets_role_name))
+  delegator_metadata_dict = \
+    signerlib.read_metadata_file(delegator_filename)
+  # TODO: Verify signature on delegator metadata!
+  delegator_signed_metadata = delegator_metadata_dict['signed']
+
+  delegations = delegator_signed_metadata.get('delegations', {})
+  roles = delegations.get('roles', [])
+
+  # Find the delegatee, if it exists, in the delegator.
+  absolute_delegatee_targets_role_name = \
+    '{0}/{1}'.format(delegator_targets_role_name,
+                     relative_delegatee_targets_role_name)
+  role_index = \
+    signerlib.find_delegated_role(roles, absolute_delegatee_targets_role_name)
+  role = None
+
+  if role_index is None:
+    logger.info('{0} does not know about {1}'.format(
+                delegator_targets_role_name,
+                relative_delegatee_targets_role_name))
+  else:
+    role = roles[role_index]
+
+  return role
 
 
 
@@ -399,8 +455,8 @@ def update_delegator_metadata(delegator_targets_role_name,
 
   if delegator_needs_update(delegator_targets_role_name,
                             relative_delegatee_targets_role_name,
-                            relative_delegated_paths,
-                            path_hash_prefix):
+                            relative_delegated_paths=relative_delegated_paths,
+                            path_hash_prefix=path_hash_prefix):
     signercli._update_parent_metadata(METADATA_DIRECTORY,
                               relative_delegatee_targets_role_name,
                               delegatee_targets_role_keys,
