@@ -62,17 +62,17 @@ then
     # Finally, delegate all targets by default to the "unclaimed" role.
     ./delegate_unclaimed_targets.py
   then
-      if [ $? -eq 0 ]
-      then
-        # Remove ancillary shell scripts.
-        rm check.py
-        rm delegate.py
-        rm delegate_claimed_targets.py
-        rm delegate_recently_claimed_targets.py
-        rm delegate_unclaimed_targets.py
-      else
-        echo "Could not delegate unclaimed targets!"; exit 1;
-      fi
+    if [ $? -eq 0 ]
+    then
+      # Remove ancillary shell scripts.
+      rm check.py
+      rm delegate.py
+      rm delegate_claimed_targets.py
+      rm delegate_recently_claimed_targets.py
+      rm delegate_unclaimed_targets.py
+    else
+      echo "Could not delegate unclaimed targets!"; exit 1;
+    fi
   else
     echo "Could not delegate recently-claimed targets!"; exit 1;
   fi

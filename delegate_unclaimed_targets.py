@@ -68,21 +68,21 @@ def update_unclaimed_targets():
   # Presently, every target falls under the "simple/" and "packages/"
   # directories.
   unclaimed_relative_delegated_paths = ["targets/simple/", "targets/packages/"]
-  # TODO: Comment on shared keys.
-  unclaimed_targets_role_keys = \
-    delegate.get_keys_for_targets_role(delegate.UNCLAIMED_TARGETS_ROLE_NAME)
-
-  # TODO: Update delegator only if necessary to do so.
-  delegate.make_delegation(delegate.TARGETS_ROLE_NAME,
-                           delegate.UNCLAIMED_TARGETS_ROLE_NAME,
-                           relative_delegated_paths=unclaimed_relative_delegated_paths)
 
   # TODO: Update delegatee only if necessary to do so.
   unclaimed_relative_target_paths = []
   delegate.update_targets_metadata(delegate.UNCLAIMED_TARGETS_ROLE_NAME,
                                    unclaimed_relative_target_paths,
-                                   unclaimed_targets_role_keys,
                                    datetime.timedelta(days=365))
+
+  # TODO: Comment on shared keys, and why this must come after
+  # update_targets_metadata.
+  unclaimed_targets_role_keys = \
+    delegate.get_keys_for_targets_role(delegate.UNCLAIMED_TARGETS_ROLE_NAME)
+
+  delegate.make_delegation(delegate.TARGETS_ROLE_NAME,
+                           delegate.UNCLAIMED_TARGETS_ROLE_NAME,
+                           relative_delegated_paths=unclaimed_relative_delegated_paths)
 
   # Delegate from the "unclaimed" targets role to each bin.
 
@@ -115,8 +115,8 @@ def update_unclaimed_targets():
     # TODO: Update delegatee only if necessary to do so.
     delegate.update_targets_metadata(absolute_binned_targets_role_name,
                                      relative_delegated_paths_in_this_bin,
-                                     unclaimed_targets_role_keys,
-                                     datetime.timedelta(days=3))
+                                     datetime.timedelta(days=3),
+                                     targets_role_keys=unclaimed_targets_role_keys)
 
     logger.info('Wrote {0}'.format(absolute_binned_targets_role_name))
 

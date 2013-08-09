@@ -36,6 +36,7 @@ KEY_SIZE=2048
 
 # Top-level role names.
 RELEASE_ROLE_NAME = 'release'
+ROOT_ROLE_NAME = 'root'
 TARGETS_ROLE_NAME = 'targets'
 TIMESTAMP_ROLE_NAME = 'timestamp'
 
@@ -70,8 +71,27 @@ TARGETS_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, 'targets')
 # Where are these metadata files expected to be located?
 RELEASE_ROLE_FILE = os.path.join(METADATA_DIRECTORY,
                                  '{0}.txt'.format(RELEASE_ROLE_NAME))
+ROOT_ROLE_FILE = os.path.join(METADATA_DIRECTORY,
+                              '{0}.txt'.format(ROOT_ROLE_NAME))
 TIMESTAMP_ROLE_FILE = os.path.join(METADATA_DIRECTORY,
                                  '{0}.txt'.format(TIMESTAMP_ROLE_NAME))
+
+
+
+
+
+############################ GLOBAL CLASSES ###################################
+
+class MissingKeys(Exception):
+  """Thrown when keys are missing for a role."""
+  pass
+
+
+
+
+
+########################### GLOBAL FUNCTIONS ##################################
+
 
 
 
@@ -292,7 +312,7 @@ def get_expiration_date(time_delta):
 
 
 
-def get_keys_for_targets_role(targets_role_name):
+def get_keys_for_targets_role(targets_role_name, create_missing_keys=False):
   """Given the name of a targets role (targets_role_name) and its list of
   passwords (targets_role_passwords), return the RSA key IDs for a targets role.
 
@@ -302,21 +322,36 @@ def get_keys_for_targets_role(targets_role_name):
   # Get the list of passwords for this role.
   targets_role_passwords = ROLE_NAME_TO_PASSWORDS[targets_role_name]
 
-  # Get all the target roles and their respective keyids.
-  # These keyids will let the user know which roles are currently known.
-  # signerlib.get_target_keyids() returns a dictionary that looks something
-  # like this: {'targets': [keyid1, ...], 'targets/role1': [keyid1, ...] ...}
-  targets_roles = signerlib.get_target_keyids(METADATA_DIRECTORY)
-
-  # Either get extant keys or create new ones for the targets role.
-  # NOTE: Yes, suppose we have generated these keys before but never associated
-  # them with the targets role. Then we would unnecessarily create new keys.
-  # One solution is a tool that finds unassociated keys and offers to delete
-  # them. 
-  if targets_role_name in targets_roles:
-    targets_role_keys = targets_roles[targets_role_name]
+  if targets_role_name == 'targets':
+    # Ask root about targets' keys.
+    root_metadata_dict = signerlib.read_metadata_file(ROOT_ROLE_FILE)
+    # TODO: Verify signature on root metadata!
+    signed_root_metadata = root_metadata_dict['signed']
+    targets_role_keys = signed_root_metadata['roles']['targets']['keyids']
   else:
-    targets_role_keys = generate_rsa_keys(targets_role_passwords)
+    # Ask the targets role itself.
+    targets_role_filename = os.path.join(METADATA_DIRECTORY,
+                                         '{0}.txt'.format(targets_role_name))
+    # If the targets role exists...
+    if os.path.exists(targets_role_filename):
+      targets_role_metadata_dict = \
+        signerlib.read_metadata_file(targets_role_filename)
+      # TODO: Verify signature on targets role metadata!
+      targets_role_metadata_signatures = \
+        targets_role_metadata_dict['signatures']
+      targets_role_keys = []
+      # Assume keys are listed in the same order as passwords.
+      for targets_role_metadata_signature in targets_role_metadata_signatures:
+        targets_role_keys.append(targets_role_metadata_signature['keyid'])
+      # Assume that there are as many keys as there are passwords.
+      assert len(targets_role_keys) == len(targets_role_passwords)
+    # Otherwise...
+    else:
+      if create_missing_keys:
+        logger.info('Creating keys for {0}'.format(targets_role_name))
+        targets_role_keys = generate_rsa_keys(targets_role_passwords)
+      else:
+        raise MissingKeys(targets_role_name)
 
   # Decrypt and load the keys of the targets role.
   loaded_targets_role_keys = \
@@ -467,7 +502,7 @@ def update_delegator_metadata(delegator_targets_role_name,
 
 # TODO: Update delegatee only if necessary to do so.
 def update_targets_metadata(targets_role_name, relative_delegated_paths,
-                            targets_role_keys, time_delta):
+                            time_delta, targets_role_keys=None):
 
   # TODO: Ensure that targets_role_name is of the correct form.
   assert targets_role_name == 'targets' or \
@@ -493,9 +528,8 @@ def update_targets_metadata(targets_role_name, relative_delegated_paths,
     os.mkdir(parent_role_directory)
 
   # Set the filename of the targets role metadata.
-  targets_role_filename = child_role_name+'.txt'
   targets_role_filename = os.path.join(parent_role_directory,
-                                       targets_role_filename)
+                                       '{0}.txt'.format(child_role_name))
 
   expiration_date = get_expiration_date(time_delta)
   version_number = signercli._get_metadata_version(targets_role_filename)
@@ -505,6 +539,14 @@ def update_targets_metadata(targets_role_name, relative_delegated_paths,
     signerlib.generate_targets_metadata(REPOSITORY_DIRECTORY,
                                         relative_delegated_paths,
                                         version_number, expiration_date)
+
+  # Where are our signing keys?
+  if targets_role_keys is None:
+    logger.info('Looking up keys for {0}'.format(targets_role_name))
+    targets_role_keys = get_keys_for_targets_role(targets_role_name,
+                                                  create_missing_keys=True)
+  else:
+    logger.info('Using given keys for {0}'.format(targets_role_name))
 
   # Sign and write the targets role metadata.
   signercli._sign_and_write_metadata(targets_metadata, targets_role_keys,
