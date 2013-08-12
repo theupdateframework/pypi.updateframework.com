@@ -74,7 +74,7 @@ RELEASE_ROLE_FILE = os.path.join(METADATA_DIRECTORY,
 ROOT_ROLE_FILE = os.path.join(METADATA_DIRECTORY,
                               '{0}.txt'.format(ROOT_ROLE_NAME))
 TIMESTAMP_ROLE_FILE = os.path.join(METADATA_DIRECTORY,
-                                 '{0}.txt'.format(TIMESTAMP_ROLE_NAME))
+                                   '{0}.txt'.format(TIMESTAMP_ROLE_NAME))
 
 
 
@@ -96,28 +96,27 @@ class MissingKeys(Exception):
 
 
 
-def _role_path_hash_prefix_needs_update(role,
-                                        relative_delegated_paths,
-                                        path_hash_prefix):
+def _role_path_hash_prefixes_needs_update(role, relative_delegated_paths,
+                                          path_hash_prefixes):
 
   # By default, we will assume that the delegator needs no update.
   needs_update = False
-  role_path_hash_prefix = role.get('path_hash_prefix')
+  role_path_hash_prefixes = role.get('path_hash_prefixes')
 
-  # Otherwise, check role path_hash_prefix.
-  if role_path_hash_prefix is None:
-    logger.warn('No role path_hash_prefix!')
+  # Otherwise, check role path_hash_prefixes.
+  if role_path_hash_prefixes is None:
+    logger.warn('No role path_hash_prefixes!')
   else:
-    if path_hash_prefix is not None:
-      if role_path_hash_prefix == path_hash_prefix:
-        logger.debug('Role path_hash_prefix is the same.')
+    if path_hash_prefixes is not None:
+      if set(role_path_hash_prefixes) == set(path_hash_prefixes):
+        logger.debug('Role path_hash_prefixes is the same.')
       else:
         needs_update = True
-        logger.debug('Role path_hash_prefix has changed!')
+        logger.debug('Role path_hash_prefixes has changed!')
     else:
       assert relative_delegated_paths is not None
       needs_update = True
-      logger.info('Role path_hash_prefix has been substituted with paths!')
+      logger.info('Role path_hash_prefixes has been substituted with paths!')
 
   return needs_update
 
@@ -125,7 +124,8 @@ def _role_path_hash_prefix_needs_update(role,
 
 
 
-def _role_paths_needs_update(role, relative_delegated_paths, path_hash_prefix):
+def _role_paths_needs_update(role, relative_delegated_paths,
+                             path_hash_prefixes):
 
   # By default, we will assume that the delegator needs no update.
   needs_update = False
@@ -150,9 +150,9 @@ def _role_paths_needs_update(role, relative_delegated_paths, path_hash_prefix):
         needs_update = True
         logger.info('Role paths have changed!')
     else:
-      assert path_hash_prefix is not None
+      assert path_hash_prefixes is not None
       needs_update = True
-      logger.info('Role paths have been substituted with path_hash_prefix!')
+      logger.info('Role paths have been substituted with path_hash_prefixes!')
 
   return needs_update
 
@@ -191,12 +191,12 @@ def compress_metadata(metadata_filename):
 def delegator_needs_update(delegator_targets_role_name,
                            relative_delegatee_targets_role_name,
                            relative_delegated_paths=None,
-                           path_hash_prefix=None):
+                           path_hash_prefixes=None):
 
-  # relative_delegated_paths XOR path_hash_prefix
-  assert (relative_delegated_paths is None and path_hash_prefix is not None) \
+  # relative_delegated_paths XOR path_hash_prefixes
+  assert (relative_delegated_paths is None and path_hash_prefixes is not None) \
           or \
-         (relative_delegated_paths is not None and path_hash_prefix is None)
+         (relative_delegated_paths is not None and path_hash_prefixes is None)
 
   # By default, we will assume that the delegator needs no update.
   needs_update = False
@@ -208,12 +208,12 @@ def delegator_needs_update(delegator_targets_role_name,
     needs_update = True
     logger.info('Role needs to be added.')
   else:
-    if _role_paths_needs_update(role, relative_delegated_paths,
-                                path_hash_prefix):
+    if _role_path_hash_prefixes_needs_update(role, relative_delegated_paths,
+                                             path_hash_prefixes):
       needs_update = True
       logger.info('Role needs update.')
-    elif _role_path_hash_prefix_needs_update(role, relative_delegated_paths,
-                                             path_hash_prefix):
+    elif _role_paths_needs_update(role, relative_delegated_paths,
+                                  path_hash_prefixes):
       needs_update = True
       logger.info('Role needs update.')
     else:
@@ -402,17 +402,16 @@ def get_relative_delegated_paths(absolute_delegated_paths):
 
 
 def make_delegation(delegator_targets_role_name, delegatee_targets_role_name,
-                    relative_delegated_paths=None,
-                    path_hash_prefix=None):
+                    relative_delegated_paths=None, path_hash_prefixes=None):
 
   # The name of the delegatee contain the name of its delegator as a prefix.
   assert \
     delegatee_targets_role_name.startswith(delegator_targets_role_name+'/')
 
-  # relative_delegated_paths XOR path_hash_prefix
-  assert (relative_delegated_paths is None and path_hash_prefix is not None) \
+  # relative_delegated_paths XOR path_hash_prefixes
+  assert (relative_delegated_paths is None and path_hash_prefixes is not None) \
           or \
-         (relative_delegated_paths is not None and path_hash_prefix is None)
+         (relative_delegated_paths is not None and path_hash_prefixes is None)
 
   # Load targets roles keys into memory, and get their key IDs.
   delegator_targets_role_keys = \
@@ -432,7 +431,7 @@ def make_delegation(delegator_targets_role_name, delegatee_targets_role_name,
                             delegator_targets_role_keys,
                             delegatee_targets_role_keys,
                             relative_delegated_paths=relative_delegated_paths,
-                            path_hash_prefix=path_hash_prefix)
+                            path_hash_prefixes=path_hash_prefixes)
 
 
 
@@ -473,24 +472,24 @@ def update_delegator_metadata(delegator_targets_role_name,
                               delegator_targets_role_keys,
                               delegatee_targets_role_keys,
                               relative_delegated_paths=None,
-                              path_hash_prefix=None):
+                              path_hash_prefixes=None):
 
-  # relative_delegated_paths XOR path_hash_prefix
-  assert (relative_delegated_paths is None and path_hash_prefix is not None) \
+  # relative_delegated_paths XOR path_hash_prefixes
+  assert (relative_delegated_paths is None and path_hash_prefixes is not None) \
           or \
-         (relative_delegated_paths is not None and path_hash_prefix is None)
+         (relative_delegated_paths is not None and path_hash_prefixes is None)
 
   if delegator_needs_update(delegator_targets_role_name,
                             relative_delegatee_targets_role_name,
                             relative_delegated_paths=relative_delegated_paths,
-                            path_hash_prefix=path_hash_prefix):
+                            path_hash_prefixes=path_hash_prefixes):
     signercli._update_parent_metadata(METADATA_DIRECTORY,
-                              relative_delegatee_targets_role_name,
-                              delegatee_targets_role_keys,
-                              delegator_targets_role_name,
-                              delegator_targets_role_keys,
-                              delegated_paths=relative_delegated_paths,
-                              path_hash_prefix=path_hash_prefix)
+                                      relative_delegatee_targets_role_name,
+                                      delegatee_targets_role_keys,
+                                      delegator_targets_role_name,
+                                      delegator_targets_role_keys,
+                                      delegated_paths=relative_delegated_paths,
+                                      path_hash_prefixes=path_hash_prefixes)
   else:
     logger.info('{0} does not need to be updated about {1}'.format(
                 delegator_targets_role_name,
