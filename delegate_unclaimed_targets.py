@@ -128,7 +128,7 @@ def update_unclaimed_targets():
     # TODO: Update delegatee only if necessary to do so.
     delegate.update_targets_metadata(absolute_binned_targets_role_name,
                                      relative_delegated_paths_in_this_bin,
-                                     datetime.timedelta(days=3),
+                                     datetime.timedelta(days=90),
                                      targets_role_keys=unclaimed_targets_role_keys)
 
     logger.info('Wrote {0}'.format(absolute_binned_targets_role_name))
