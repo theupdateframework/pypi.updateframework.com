@@ -39,8 +39,8 @@ source $VIRTUAL_ENVIRONMENT/bin/activate
 
 # Install TUF and other required system packages.
 # TODO: Conditional install.
-pip install --upgrade $TUF_TARBALL
 sudo apt-get install expect libgmp-dev python-dev
+pip install --upgrade $TUF_TARBALL
 
 
 # Setup top-level roles.
