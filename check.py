@@ -27,14 +27,8 @@ import traceback
 
 import tuf.formats
 import tuf.hash
-import tuf.log
+from tuf.log import logger
 import tuf.repo.signerlib as signerlib
-
-
-
-
-
-logger = logging.getLogger('tuf.pypi.updateframework.com')
 
 
 
