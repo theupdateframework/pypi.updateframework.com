@@ -15,6 +15,3 @@ PACKAGE_EXTENSION=tar.gz
 VIRTUAL_ENVIRONMENT=virtual_python
 
 
-TUF_TARBALL=https://github.com/theupdateframework/tuf/archive/demo2.zip
-
-
