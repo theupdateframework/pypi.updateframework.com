@@ -11,7 +11,11 @@ then
   echo "Please run setup1.sh first!"; exit 1;
 else
 
-  cp bandersnatch.conf $BASE_DIRECTORY
+  if [ ! -e $BASE_DIRECTORY/bandersnatch.conf ]
+  then
+    cp bandersnatch.conf $BASE_DIRECTORY
+  fi
+
   cd $BASE_DIRECTORY
   source $VIRTUAL_ENVIRONMENT/bin/activate
 
